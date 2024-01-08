@@ -13,6 +13,7 @@ This workflow will execute the following actions as long as they are available o
 | Stylelint | [stylelint](https://www.npmjs.com/package/stylelint) | `.stylelintrc.js` |
 | Licence headers check | [glpi-project/tools](https://packagist.org/packages/glpi-project/tools) | `tools/HEADER` |
 | PHPUnit | [phpunit/phpunit](https://packagist.org/packages/phpunit/phpunit) | `phpunit.xml` |
+| Jest | [jest](https://www.npmjs.com/package/jest) | `jest.config.js` |
 
 You can use this workflow in any plugin using the following Github Actions configuration.
 You will have to use your plugin system name in the `plugin-key` parameter.

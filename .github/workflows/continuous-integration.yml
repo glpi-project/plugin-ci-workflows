@@ -127,3 +127,11 @@ jobs:
           else
             echo -e "\033[0;33mPHPUnit execution skipped.\033[0m"
           fi
+      - name: "Jest"
+        run: |
+          if [[ -f "node_modules/.bin/jest" && -f "jest.config.js" && -d "tests/js" ]]; then
+            echo -e "\033[0;33mExecuting Jest...\033[0m"
+            NODE_OPTIONS="--experimental-vm-modules" node_modules/.bin/jest --colors --forceExit tests/js --verbose
+          else
+            echo -e "\033[0;33mJest execution skipped.\033[0m"
+          fi
