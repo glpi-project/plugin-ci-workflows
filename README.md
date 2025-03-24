@@ -39,6 +39,9 @@ jobs:
 
       # The database docker image on which to run the tests.
       db-image: "mariadb:11.4"
+
+      # Optional initialization script that can be used, for instance, to install additional system dependencies.
+      init-script: "./.github/workflows/init-script.sh"
 ```
 
 The available `glpi-version`/`php-version` combinations corresponds to the `ghcr.io/glpi-project/githubactions-glpi-apache` images tags
@@ -48,6 +51,9 @@ The `db-image` parameter is a combination of the DB server engine (`mysql`, `mar
 - MariaDB available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-mariadb/versions?filters%5Bversion_type%5D=tagged)
 - MySQL available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-mysql/versions?filters%5Bversion_type%5D=tagged).
 - Percona available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-percona/versions?filters%5Bversion_type%5D=tagged).
+
+An optional `init-script` parameter can be used to define the path of an initialization script. This script will be executed with `bash`.
+It can be used, for instance, to install a specific PHP extension.
 
 ## Generate CI matrix
 
