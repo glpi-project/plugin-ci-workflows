@@ -50,7 +50,7 @@ jobs:
         uses: "actions/checkout@v4"
         with:
             path: "${{ inputs.plugin-key }}"
-      - name: "Additionnal script"
+      - name: "Execute init script"
         if: ${{ inputs.init-script != '' }}
         shell: "bash"
         run: |
