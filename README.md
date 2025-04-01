@@ -15,6 +15,7 @@ This workflow will execute the following actions as long as they are available o
 | Licence headers check | [glpi-project/tools](https://packagist.org/packages/glpi-project/tools) | `tools/HEADER` |
 | PHPUnit | [phpunit/phpunit](https://packagist.org/packages/phpunit/phpunit) | `phpunit.xml` |
 | Jest | [jest](https://www.npmjs.com/package/jest) | `jest.config.js` |
+| TwigCS | [friendsoftwig/twigcs](https://github.com/friendsoftwig/twigcs) | `.twig_cs.dist.php` |
 
 During the `PHPUnit` tests execution, GLPI will be accessible over HTTP (`http://localhost/`).
 
