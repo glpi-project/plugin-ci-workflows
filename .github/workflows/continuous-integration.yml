@@ -171,3 +171,11 @@ jobs:
           else
             echo -e "\033[0;33mJest execution skipped.\033[0m"
           fi
+      - name: "Run TwigCS"
+        run: |
+          if [[ -f "vendor/bin/twigcs" && -f ".twig_cs.dist.php" ]]; then
+            echo -e "\033[0;33mExecuting TwigCS...\033[0m"
+            vendor/bin/twigcs
+          else
+            echo -e "\033[0;33mTwigCS execution skipped.\033[0m"
+          fi
