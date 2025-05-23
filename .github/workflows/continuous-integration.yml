@@ -80,70 +80,49 @@ jobs:
         run: |
           sudo setfacl --recursive --modify u:www-data:rwx "${{ env.CACHE_DIR }}"
           sudo setfacl --recursive --modify u:www-data:rwx /var/www/glpi/plugins
-      - name: "Install dependencies"
+      - name: "Install composer dependencies"
+        if: ${{ hashFiles('composer.json') != '' }}
         run: |
-          if [[ -f "composer.json" ]]; then
-            composer install --ansi --no-interaction --no-progress --prefer-dist
-          fi
-          if [[ -f "package.json" ]]; then
-            npm install --no-save
-          fi
+          composer install --ansi --no-interaction --no-progress --prefer-dist
+      - name: "Install npm dependencies"
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          npm install --no-save
       - name: "PHP Parallel Lint"
+        if: ${{ hashFiles('vendor/bin/parallel-lint') != '' }}
         run: |
-          if [[ -f "vendor/bin/parallel-lint" ]]; then
-            echo -e "\033[0;33mExecuting PHP Parallel Lint...\033[0m"
-            vendor/bin/parallel-lint --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
-          else
-            echo -e "\033[0;33mPHP Parallel Lint execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting PHP Parallel Lint...\033[0m"
+          vendor/bin/parallel-lint --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
       - name: "PHP CodeSniffer"
+        if: ${{ hashFiles('vendor/bin/phpcs') != '' && hashFiles('.phpcs.xml') != '' }}
         run: |
-          if [[ -f "vendor/bin/phpcs" && -f ".phpcs.xml" ]]; then
-            echo -e "\033[0;33mExecuting PHP CodeSniffer...\033[0m"
-            vendor/bin/phpcs
-          else
-            echo -e "\033[0;33mPHP CodeSniffer execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting PHP CodeSniffer...\033[0m"
+          vendor/bin/phpcs
       - name: "PHP-CS-Fixer"
+        if: ${{ hashFiles('vendor/bin/php-cs-fixer') != '' && hashFiles('.php-cs-fixer.php') != '' }}
         run: |
-          if [[ -f "vendor/bin/php-cs-fixer" && -f ".php-cs-fixer.php" ]]; then
-            echo -e "\033[0;33mExecuting PHP-CS-Fixer...\033[0m"
-            PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer check --config=.php-cs-fixer.php --no-interaction --show-progress none
-          else
-            echo -e "\033[0;33mPHP-CS-Fixer execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting PHP-CS-Fixer...\033[0m"
+          PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer check --config=.php-cs-fixer.php --no-interaction --show-progress none
       - name: "PHPStan"
+        if: ${{ hashFiles('vendor/bin/phpstan') != '' && hashFiles('phpstan.neon') != '' }}
         run: |
-          if [[ -f "vendor/bin/phpstan" && -f "phpstan.neon" ]]; then
-            echo -e "\033[0;33mExecuting PHPStan...\033[0m"
-            vendor/bin/phpstan analyze --ansi --memory-limit=2G --no-interaction --no-progress
-          else
-            echo -e "\033[0;33mPHPStan execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting PHPStan...\033[0m"
+          vendor/bin/phpstan analyze --ansi --memory-limit=2G --no-interaction --no-progress
       - name: "JS Lint"
+        if: ${{ hashFiles('node_modules/.bin/eslint') != '' && (hashFiles('eslint.config.js') != '' || hashFiles('eslint.config.mjs') != '' || hashFiles('eslint.config.cjs') != '' || hashFiles('.eslintrc.js') != '') }}
         run: |
-          if [[ -f "node_modules/.bin/eslint" && ( -f "eslint.config.js" || -f "eslint.config.mjs" || -f "eslint.config.cjs" || -f ".eslintrc.js" ) ]]; then
-            echo -e "\033[0;33mExecuting ESLint...\033[0m"
-            node_modules/.bin/eslint --color .
-          else
-            echo -e "\033[0;33mESLint execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting ESLint...\033[0m"
+          node_modules/.bin/eslint --color .
       - name: "CSS Lint"
+        if: ${{ hashFiles('node_modules/.bin/stylelint') != '' && hashFiles('.stylelintrc.js') != '' }}
         run: |
-          if [[ -f "node_modules/.bin/stylelint" && -f ".stylelintrc.js" ]]; then
-            echo -e "\033[0;33mExecuting Stylelint...\033[0m"
-            node_modules/.bin/stylelint --color "**/*.css" "**/*.scss"
-          else
-            echo -e "\033[0;33mStylelint execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting Stylelint...\033[0m"
+          node_modules/.bin/stylelint --color "**/*.css" "**/*.scss"
       - name: "Misc lint"
+        if: ${{ hashFiles('vendor/bin/licence-headers-check') != '' && hashFiles('tools/HEADER') != '' }}
         run: |
-          if [[ -f "vendor/bin/licence-headers-check" && -f "tools/HEADER" ]]; then
-            echo -e "\033[0;33mExecuting licence headers checks...\033[0m"
-            vendor/bin/licence-headers-check --ansi --no-interaction
-          else
-            echo -e "\033[0;33mLicence headers checks skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting licence headers checks...\033[0m"
+          vendor/bin/licence-headers-check --ansi --no-interaction
       - name: "Install plugin"
         working-directory: "/var/www/glpi"
         run: |
@@ -158,26 +137,17 @@ jobs:
         run: |
           sudo service apache2 start
       - name: "PHPUnit"
+        if: ${{ hashFiles('vendor/bin/phpunit') != '' && hashFiles('phpunit.xml') != '' }}
         run: |
-          if [[ -f "vendor/bin/phpunit" && -f "phpunit.xml" ]]; then
-            echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
-            php vendor/bin/phpunit --colors=always
-          else
-            echo -e "\033[0;33mPHPUnit execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
+          php vendor/bin/phpunit --colors=always
       - name: "Jest"
+        if: ${{ hashFiles('node_modules/.bin/jest') != '' && hashFiles('jest.config.js') != '' }}
         run: |
-          if [[ -f "node_modules/.bin/jest" && -f "jest.config.js" ]]; then
-            echo -e "\033[0;33mExecuting Jest...\033[0m"
-            NODE_OPTIONS="--experimental-vm-modules" node_modules/.bin/jest --colors --forceExit
-          else
-            echo -e "\033[0;33mJest execution skipped.\033[0m"
-          fi
-      - name: "Run TwigCS"
+          echo -e "\033[0;33mExecuting Jest...\033[0m"
+          NODE_OPTIONS="--experimental-vm-modules" node_modules/.bin/jest --colors --forceExit
+      - name: "TwigCS"
+        if: ${{ hashFiles('vendor/bin/twigcs') != '' && hashFiles('.twig_cs.dist.php') != '' }}
         run: |
-          if [[ -f "vendor/bin/twigcs" && -f ".twig_cs.dist.php" ]]; then
-            echo -e "\033[0;33mExecuting TwigCS...\033[0m"
-            vendor/bin/twigcs
-          else
-            echo -e "\033[0;33mTwigCS execution skipped.\033[0m"
-          fi
+          echo -e "\033[0;33mExecuting TwigCS...\033[0m"
+          vendor/bin/twigcs
