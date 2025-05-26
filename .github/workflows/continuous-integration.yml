@@ -81,45 +81,45 @@ jobs:
           sudo setfacl --recursive --modify u:www-data:rwx "${{ env.CACHE_DIR }}"
           sudo setfacl --recursive --modify u:www-data:rwx /var/www/glpi/plugins
       - name: "Install composer dependencies"
-        if: ${{ hashFiles(format('plugins/{0}/composer.json', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         run: |
           composer install --ansi --no-interaction --no-progress --prefer-dist
       - name: "Install npm dependencies"
-        if: ${{ hashFiles(format('plugins/{0}/package.json', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/package.json', inputs.plugin-key)) != '' }}
         run: |
           npm install --no-save
       - name: "PHP Parallel Lint"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/parallel-lint', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/parallel-lint', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHP Parallel Lint...\033[0m"
           vendor/bin/parallel-lint --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
       - name: "PHP CodeSniffer"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/phpcs', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/.phpcs.xml', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/phpcs', inputs.plugin-key)) != '' && hashFiles(format('{0}/.phpcs.xml', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHP CodeSniffer...\033[0m"
           vendor/bin/phpcs
       - name: "PHP-CS-Fixer"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/php-cs-fixer', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/.php-cs-fixer.php', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/php-cs-fixer', inputs.plugin-key)) != '' && hashFiles(format('{0}/.php-cs-fixer.php', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHP-CS-Fixer...\033[0m"
           PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer check --config=.php-cs-fixer.php --no-interaction --show-progress none
       - name: "PHPStan"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/phpstan', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/phpstan.neon', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/phpstan', inputs.plugin-key)) != '' && hashFiles(format('{0}/phpstan.neon', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHPStan...\033[0m"
           vendor/bin/phpstan analyze --ansi --memory-limit=2G --no-interaction --no-progress
       - name: "JS Lint"
-        if: ${{ hashFiles(format('plugins/{0}/node_modules/.bin/eslint', inputs.plugin-key)) != '' && (hashFiles(format('plugins/{0}/eslint.config.js', inputs.plugin-key)) != '' || hashFiles(format('plugins/{0}/eslint.config.mjs', inputs.plugin-key)) != '' || hashFiles(format('plugins/{0}/eslint.config.cjs', inputs.plugin-key)) != '' || hashFiles(format('plugins/{0}/.eslintrc.js', inputs.plugin-key)) != '') }}
+        if: ${{ hashFiles(format('{0}/node_modules/.bin/eslint', inputs.plugin-key)) != '' && (hashFiles(format('{0}/eslint.config.js', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.mjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.cjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/.eslintrc.js', inputs.plugin-key)) != '') }}
         run: |
           echo -e "\033[0;33mExecuting ESLint...\033[0m"
           node_modules/.bin/eslint --color .
       - name: "CSS Lint"
-        if: ${{ hashFiles(format('plugins/{0}/node_modules/.bin/stylelint', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/.stylelintrc.js', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/node_modules/.bin/stylelint', inputs.plugin-key)) != '' && hashFiles(format('{0}/.stylelintrc.js', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting Stylelint...\033[0m"
           node_modules/.bin/stylelint --color "**/*.css" "**/*.scss"
       - name: "Misc lint"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/licence-headers-check', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/tools/HEADER', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/licence-headers-check', inputs.plugin-key)) != '' && hashFiles(format('{0}/tools/HEADER', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting licence headers checks...\033[0m"
           vendor/bin/licence-headers-check --ansi --no-interaction
@@ -137,17 +137,17 @@ jobs:
         run: |
           sudo service apache2 start
       - name: "PHPUnit"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/phpunit', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/phpunit.xml', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/phpunit', inputs.plugin-key)) != '' && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
           php vendor/bin/phpunit --colors=always
       - name: "Jest"
-        if: ${{ hashFiles(format('plugins/{0}/node_modules/.bin/jest', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/jest.config.js', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/node_modules/.bin/jest', inputs.plugin-key)) != '' && hashFiles(format('{0}/jest.config.js', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting Jest...\033[0m"
           NODE_OPTIONS="--experimental-vm-modules" node_modules/.bin/jest --colors --forceExit
       - name: "TwigCS"
-        if: ${{ hashFiles(format('plugins/{0}/vendor/bin/twigcs', inputs.plugin-key)) != '' && hashFiles(format('plugins/{0}/.twig_cs.dist.php', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/vendor/bin/twigcs', inputs.plugin-key)) != '' && hashFiles(format('{0}/.twig_cs.dist.php', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting TwigCS...\033[0m"
           vendor/bin/twigcs
