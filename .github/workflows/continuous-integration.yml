@@ -137,10 +137,10 @@ jobs:
         run: |
           sudo service apache2 start
       - name: "PHPUnit"
-        if: ${{ hashFiles(format('{0}/vendor/bin/phpunit', inputs.plugin-key)) != '' && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
+        if: ${{ hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
-          php vendor/bin/phpunit --colors=always
+          php ../../vendor/bin/phpunit --colors=always
       - name: "Jest"
         if: ${{ hashFiles(format('{0}/node_modules/.bin/jest', inputs.plugin-key)) != '' && hashFiles(format('{0}/jest.config.js', inputs.plugin-key)) != '' }}
         run: |
