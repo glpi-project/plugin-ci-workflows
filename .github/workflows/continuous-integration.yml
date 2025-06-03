@@ -41,7 +41,7 @@ jobs:
     defaults:
       run:
         # By default, execute commands using the `www-data` user to prevent rights issues on GLPI generated files.
-        shell: "sudo --set-home --user=www-data env --ignore-environment GLPI_ENVIRONMENT_TYPE=testing bash --noprofile --norc -eo pipefail {0}"
+        shell: "sudo --set-home --user=www-data env GLPI_ENVIRONMENT_TYPE=testing bash --noprofile --norc -eo pipefail {0}"
         working-directory: "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
     env:
       CACHE_DIR: "/home/www-data/.cache/continuous-integration-workflow"
@@ -54,7 +54,7 @@ jobs:
         if: ${{ inputs.init-script != '' }}
         shell: "bash"
         run: |
-          env --ignore-environment GLPI_ENVIRONMENT_TYPE=testing bash --noprofile --norc ${{ inputs.init-script }}
+          env GLPI_ENVIRONMENT_TYPE=testing bash --noprofile --norc ${{ inputs.init-script }}
       - name: "Configure cache directories"
         # Use default `bash` shell with `github-actions-runner` user
         shell: "bash"
