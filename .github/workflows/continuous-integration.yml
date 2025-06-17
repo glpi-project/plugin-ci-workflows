@@ -135,7 +135,7 @@ jobs:
         # Use default `bash` shell with `github-actions-runner` user
         shell: "bash"
         run: |
-          sudo service apache2 start
+          sudo env GLPI_ENVIRONMENT_TYPE=testing service apache2 start
       - name: "PHPUnit"
         if: ${{ hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
         run: |
