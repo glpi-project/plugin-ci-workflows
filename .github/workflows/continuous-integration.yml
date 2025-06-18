@@ -87,6 +87,9 @@ jobs:
       - name: "Install composer dependencies"
         if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         run: |
+          echo -e "\033[0;33mMark plugin directory as safe...\033[0m"
+          git config --global --add safe.directory "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
+          echo -e "\033[0;33mExecuting Composer install...\033[0m"
           composer install --ansi --no-interaction --no-progress --prefer-dist
       - name: "Install npm dependencies"
         if: ${{ !cancelled() && hashFiles(format('{0}/package.json', inputs.plugin-key)) != '' }}
