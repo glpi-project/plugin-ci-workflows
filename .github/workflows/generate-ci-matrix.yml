@@ -60,7 +60,7 @@ jobs:
                     {"glpi-version": "11.0.x", "php-version": "8.3", "db-image": "mysql:8.4"},
                     {"glpi-version": "11.0.x", "php-version": "8.4", "db-image": "mysql:8.4"},
                     {"glpi-version": "11.0.x", "php-version": "8.4", "db-image": "mysql:8.0"},
-                    {"glpi-version": "11.0.x", "php-version": "8.4", "db-image": "mariadb:10.5"},
+                    {"glpi-version": "11.0.x", "php-version": "8.4", "db-image": "mariadb:10.6"},
                     {"glpi-version": "11.0.x", "php-version": "8.4", "db-image": "mariadb:11.4"}
                   ]
                 }
