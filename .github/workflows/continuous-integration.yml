@@ -115,6 +115,11 @@ jobs:
         run: |
           echo -e "\033[0;33mExecuting PHPStan...\033[0m"
           vendor/bin/phpstan analyze --ansi --memory-limit=2G --no-interaction --no-progress
+      - name: "Psalm"
+        if: ${{ !cancelled() && hashFiles(format('{0}/psalm.xml', inputs.plugin-key)) != '' }}
+        run: |
+          echo -e "\033[0;33mExecuting Psalm...\033[0m"
+          php ../../vendor/bin/psalm --long-progress --output-format=github
       - name: "JS Lint"
         if: ${{ !cancelled() && hashFiles(format('{0}/node_modules/.bin/eslint', inputs.plugin-key)) != '' && (hashFiles(format('{0}/eslint.config.js', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.mjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.cjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/.eslintrc.js', inputs.plugin-key)) != '') }}
         run: |
