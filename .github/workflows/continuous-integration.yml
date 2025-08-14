@@ -120,6 +120,11 @@ jobs:
         run: |
           echo -e "\033[0;33mExecuting Psalm...\033[0m"
           php ../../vendor/bin/psalm --long-progress --output-format=github
+      - name: "Rector"
+        if: ${{ !cancelled() && hashFiles(format('{0}/vendor/bin/rector', inputs.plugin-key)) != '' && hashFiles(format('{0}/rector.php', inputs.plugin-key)) != '' }}
+        run: |
+          echo -e "\033[0;33mExecuting Rector...\033[0m"
+          php vendor/bin/rector process --dry-run --ansi
       - name: "JS Lint"
         if: ${{ !cancelled() && hashFiles(format('{0}/node_modules/.bin/eslint', inputs.plugin-key)) != '' && (hashFiles(format('{0}/eslint.config.js', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.mjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/eslint.config.cjs', inputs.plugin-key)) != '' || hashFiles(format('{0}/.eslintrc.js', inputs.plugin-key)) != '') }}
         run: |
