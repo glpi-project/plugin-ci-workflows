@@ -99,9 +99,9 @@ jobs:
         run: |
           echo -e "\033[0;33mExecuting PHP Parallel Lint...\033[0m"
           if [[ -f "vendor/bin/parallel-lint" ]]; then
-            vendor/bin/parallel-lint --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
+            vendor/bin/parallel-lint --show-deprecated --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
           elif [[ -f "../../vendor/bin/parallel-lint" ]]; then
-            ../../vendor/bin/parallel-lint --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
+            ../../vendor/bin/parallel-lint --show-deprecated --colors --exclude ./lib/ --exclude ./node_modules/ --exclude ./vendor/ --no-progress .
           else
             echo -e "\033[0;31mPHP Parallel Lint binary not found!\033[0m"
             exit 1
