@@ -48,7 +48,7 @@ jobs:
       init-script: "./.github/workflows/init-script.sh"
 
       # Optional extra services (possible values: "openldap").
-      # extra-services: "openldap"
+      extra-services: "openldap"
 ```
 
 The available `glpi-version`/`php-version` combinations corresponds to the `ghcr.io/glpi-project/githubactions-glpi-apache` images tags
