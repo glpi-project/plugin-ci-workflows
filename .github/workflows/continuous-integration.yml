@@ -105,6 +105,24 @@ jobs:
           git config --global --add safe.directory "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
           echo -e "\033[0;33mExecuting Composer install...\033[0m"
           composer install --ansi --no-interaction --no-progress --prefer-dist
+      - name: "Check for common dependencies"
+        if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
+        run: |
+          echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
+          sudo apt-get install -y jq
+          PLUGIN_DEPS=$(composer show --format=json 2>/dev/null | jq -r '.installed[] | select(.["direct-dependency"] == true and (.abandoned == false or .abandoned == null)) | .name' | grep -v '^glpi-project/tools$')
+          CORE_DEPS=$(cd ../../ && composer show --format=json 2>/dev/null | jq -r '.installed[] | select(.["direct-dependency"] == true and (.abandoned == false or .abandoned == null)) | .name')
+          HAS_MATCH=false
+          for plugin_dep in $PLUGIN_DEPS; do
+            for core_dep in $CORE_DEPS; do
+              if [ "$plugin_dep" == "$core_dep" ]; then
+                echo "❌ Conflict: '$plugin_dep' is present in both plugin and core."
+                HAS_MATCH=true
+              fi
+            done
+          done
+          if $HAS_MATCH; then exit 1; fi
+          echo "✅ No dependency conflicts detected."
       - name: "Install npm dependencies"
         if: ${{ !cancelled() && hashFiles(format('{0}/package.json', inputs.plugin-key)) != '' }}
         run: |
