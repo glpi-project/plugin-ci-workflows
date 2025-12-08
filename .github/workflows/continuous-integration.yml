@@ -110,8 +110,8 @@ jobs:
         run: |
           echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
           sudo apt-get install -y jq
-          PLUGIN_DEPS=$(composer show --format=json 2>/dev/null | jq -r '.installed[] | select(.["direct-dependency"] == true and (.abandoned == false or .abandoned == null)) | .name' | grep -v '^glpi-project/tools$')
-          CORE_DEPS=$(cd ../../ && composer show --format=json 2>/dev/null | jq -r '.installed[] | select(.["direct-dependency"] == true and (.abandoned == false or .abandoned == null)) | .name')
+          PLUGIN_DEPS=$(composer show --direct --format=json 2>/dev/null | jq -r '.installed[] | .name' | grep -v '^glpi-project/tools$')
+          CORE_DEPS=$(cd ../../ && composer show --direct --format=json 2>/dev/null | jq -r '.installed[] | .name')
           HAS_MATCH=false
           for plugin_dep in $PLUGIN_DEPS; do
             for core_dep in $CORE_DEPS; do
