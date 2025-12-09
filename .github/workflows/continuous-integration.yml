@@ -109,12 +109,12 @@ jobs:
         if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
-          PLUGIN_DEPS=$(composer show --direct --format=json | jq -r '.installed[] | .name' | grep -v '^glpi-project/tools$')
+          PLUGIN_DEPS=$(composer show --direct --format=json | jq -r '.installed[] | .name')
           CORE_DEPS=$(cd ../../ && composer show --direct --format=json | jq -r '.installed[] | .name')
           HAS_MATCH=false
           for plugin_dep in $PLUGIN_DEPS; do
             for core_dep in $CORE_DEPS; do
-              if [ "$plugin_dep" == "$core_dep" ]; then
+              if [ "$plugin_dep" == "$core_dep" ] && [ "$plugin_dep" != "glpi-project/tools" ]; then
                 echo "❌ Conflict: '$plugin_dep' is present in both plugin and core."
                 HAS_MATCH=true
               fi
