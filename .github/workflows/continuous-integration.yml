@@ -111,16 +111,19 @@ jobs:
           echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
           PLUGIN_DEPS=$(composer show --direct --format=json | jq -r '.installed[] | .name')
           CORE_DEPS=$(cd ../../ && composer show --direct --format=json | jq -r '.installed[] | .name')
-          HAS_MATCH=false
+          HAS_MATCH='false'
           for plugin_dep in $PLUGIN_DEPS; do
             for core_dep in $CORE_DEPS; do
               if [ "$plugin_dep" == "$core_dep" ] && [ "$plugin_dep" != "glpi-project/tools" ]; then
                 echo "❌ Conflict: '$plugin_dep' is present in both plugin and core."
-                HAS_MATCH=true
+                HAS_MATCH='true'
               fi
             done
           done
-          if $HAS_MATCH; then exit 1; fi
+          if [ "$HAS_MATCH" == 'true' ]; then
+            echo -e "\033[0;31mDependency conflicts detected. Please resolve them before proceeding.\033[0m"
+            exit 1
+          fi
           echo "✅ No dependency conflicts detected."
       - name: "Install npm dependencies"
         if: ${{ !cancelled() && hashFiles(format('{0}/package.json', inputs.plugin-key)) != '' }}
