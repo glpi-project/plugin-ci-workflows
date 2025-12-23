@@ -52,6 +52,9 @@ jobs:
 
       # Set to true to skip the CHANGELOG update check on pull requests.
       skip-changelog-check: true
+
+      # Whether to enable code coverage generation (default: false).
+      code-coverage: true
 ```
 
 The available `glpi-version`/`php-version` combinations corresponds to the `ghcr.io/glpi-project/githubactions-glpi-apache` images tags

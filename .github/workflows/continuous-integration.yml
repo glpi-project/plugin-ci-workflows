@@ -26,6 +26,7 @@ on:
         default: ""
       skip-changelog-check:
         description: "Set to true to skip the CHANGELOG update check on pull requests."
+      code-coverage:
         required: false
         type: boolean
         default: false
@@ -351,18 +352,46 @@ jobs:
         shell: "bash"
         run: |
           sudo service apache2 start
+      - name: "Setup coverage driver"
+        if: ${{ !cancelled() && inputs.code-coverage == true }}
+        shell: "bash"
+        run: |
+          if ! php -m | grep -q -E 'xdebug|pcov'; then
+             echo -e "\033[0;33mInstalling PCOV driver...\033[0m"
+             sudo pecl install pcov || true
+          fi
+
       - name: "PHPUnit"
         if: ${{ !cancelled() && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
+        env:
+          PCOV_ENABLED: "${{ inputs.code-coverage && '1' || '0' }}"
+          XDEBUG_MODE: "${{ inputs.code-coverage && 'coverage' || 'off' }}"
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
+          PHPUNIT_FLAGS="--colors=always"
+          PHP_CMD="php"
+
+          if [[ "${{ inputs.code-coverage }}" == "true" ]]; then
+            PHPUNIT_FLAGS="$PHPUNIT_FLAGS --coverage-text --coverage-cobertura=cobertura.xml"
+            # Explicitly load PCOV if needed
+            PHP_CMD="php -d extension=pcov.so"
+          fi
+
           if [[ -f "vendor/bin/phpunit" ]]; then
-            vendor/bin/phpunit --colors=always
+            $PHP_CMD vendor/bin/phpunit $PHPUNIT_FLAGS
           elif [[ -f "../../vendor/bin/phpunit" ]]; then
-            ../../vendor/bin/phpunit --colors=always
+            $PHP_CMD ../../vendor/bin/phpunit $PHPUNIT_FLAGS
           else
             echo -e "\033[0;31mPHPUnit binary not found!\033[0m"
             exit 1
           fi
+      - name: "Upload coverage report"
+        uses: "actions/upload-artifact@v4"
+        if: ${{ !cancelled() && inputs.code-coverage == true }}
+        with:
+          name: "coverage-report"
+          path: "/var/www/glpi/plugins/${{ inputs.plugin-key }}/cobertura.xml"
+          overwrite: true
       - name: "Jest"
         if: ${{ !cancelled() && hashFiles(format('{0}/jest.config.js', inputs.plugin-key)) != '' }}
         run: |
