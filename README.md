@@ -36,10 +36,10 @@ jobs:
       plugin-key: "myplugin"
 
       # The version of GLPI on which to run the tests.
-      glpi-version: "10.0.x"
+      glpi-version: "11.0.x"
 
       # The version of PHP on which to run the tests.
-      php-version: "8.1"
+      php-version: "8.2"
 
       # The database docker image on which to run the tests.
       db-image: "mariadb:11.4"
