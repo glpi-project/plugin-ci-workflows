@@ -109,8 +109,8 @@ jobs:
         if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
-          PLUGIN_DEPS=$(composer show --direct --format=json | jq -r '.installed[] | .name')
-          CORE_DEPS=$(cd ../../ && composer show --direct --format=json | jq -r '.installed[] | .name')
+          PLUGIN_DEPS=$(composer show --direct --format=json 2>/dev/null | jq -r '(.installed // [])[] | .name' 2>/dev/null || echo "")
+          CORE_DEPS=$(cd ../../ && composer show --direct --format=json 2>/dev/null | jq -r '(.installed // [])[] | .name' 2>/dev/null || echo "")
           HAS_MATCH='false'
           for plugin_dep in $PLUGIN_DEPS; do
             for core_dep in $CORE_DEPS; do
