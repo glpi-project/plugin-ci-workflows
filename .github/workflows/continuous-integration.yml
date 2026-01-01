@@ -61,7 +61,7 @@ jobs:
       CACHE_DIR: "/home/www-data/.cache/continuous-integration-workflow"
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           path: "${{ inputs.plugin-key }}"
       - name: "Execute init script"
