@@ -82,7 +82,7 @@ jobs:
           composer config cache-dir "${{ env.CACHE_DIR }}/composer"
       - name: "Restore cache"
         if: ${{ !cancelled() }}
-        uses: "actions/cache@v4"
+        uses: "actions/cache@v5"
         with:
           path: |
             ${{ env.CACHE_DIR }}
