@@ -240,7 +240,7 @@ jobs:
             vendor/bin/licence-headers-check --ansi --no-interaction
           elif [[ -f "../../vendor/bin/licence-headers-check" ]]; then
             ../../vendor/bin/licence-headers-check --ansi --no-interaction --header-file=tools/HEADER -d .
-          elif [[ -f "../../bin/console" ]] && php ../../bin/console list 2>/dev/null | grep -q "tools:licence_headers_check"; then
+          elif [[ -f "../../bin/console" && -n "$(php ../../bin/console list | grep 'tools:licence_headers_check')" ]]; then
             echo -e "\033[0;33mUsing GLPI core tools:licence_headers_check command...\033[0m"
             php ../../bin/console tools:licence_headers_check --ansi --no-interaction --plugin=${{ inputs.plugin-key }}
           else
