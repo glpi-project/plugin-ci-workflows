@@ -232,7 +232,7 @@ jobs:
             echo -e "\033[0;31mStylelint binary not found!\033[0m"
             exit 1
           fi
-      - name: "Misc lint"
+      - name: "Licence header check"
         if: ${{ !cancelled() && hashFiles(format('{0}/tools/HEADER', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mExecuting licence headers checks...\033[0m"
@@ -240,6 +240,9 @@ jobs:
             vendor/bin/licence-headers-check --ansi --no-interaction
           elif [[ -f "../../vendor/bin/licence-headers-check" ]]; then
             ../../vendor/bin/licence-headers-check --ansi --no-interaction --header-file=tools/HEADER -d .
+          elif [[ -f "/var/www/glpi/bin/console" ]]; then
+            echo -e "\033[0;33mUsing GLPI core tools:licence_headers_check command...\033[0m"
+            php /var/www/glpi/bin/console tools:licence_headers_check --ansi --no-interaction --plugin=${{ inputs.plugin-key }}
           else
             echo -e "\033[0;31mLicence headers check binary not found!\033[0m"
             exit 1
