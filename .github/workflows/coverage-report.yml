@@ -1,0 +1,103 @@
+name: "Coverage report"
+
+on:
+  workflow_call:
+    inputs:
+      plugin-key:
+        required: true
+        type: string
+
+permissions:
+  pull-requests: write
+  actions: read
+
+jobs:
+  coverage-report:
+    runs-on: "ubuntu-latest"
+    name: "Coverage report"
+    steps:
+      - name: "Download coverage report"
+        uses: "actions/download-artifact@v7"
+        with:
+          name: "coverage-report"
+
+      - name: "Read coverage configuration"
+        id: "coverage-config"
+        run: |
+          CONFIG_FILE=".glpi-coverage.json"
+          if [[ ! -f "$CONFIG_FILE" ]]; then
+            echo "⚠️ No $CONFIG_FILE found, skipping coverage report."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
+          if [[ "$ENABLED" != "true" ]]; then
+            echo "ℹ️ Code coverage is disabled via $CONFIG_FILE"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "only-list-changed-files=$(jq -r '.only_list_changed_files // true' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "badge=$(jq -r '.badge // true' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "overall-coverage-fail-threshold=$(jq -r '.overall_coverage_fail_threshold // 0' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "file-coverage-error-min=$(jq -r '.file_coverage_error_min // 50' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "file-coverage-warning-max=$(jq -r '.file_coverage_warning_max // 75' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "fail-on-negative-difference=$(jq -r '.fail_on_negative_difference // false' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "retention-days=$(jq -r '.retention_days // 90' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+
+      - name: "Generate coverage report"
+        if: steps.coverage-config.outputs.skip != 'true'
+        uses: "clearlyip/code-coverage-report-action@v6"
+        id: "coverage-report"
+        with:
+          filename: "cobertura.xml"
+          only_list_changed_files: ${{ steps.coverage-config.outputs.only-list-changed-files }}
+          badge: ${{ steps.coverage-config.outputs.badge }}
+          overall_coverage_fail_threshold: ${{ steps.coverage-config.outputs.overall-coverage-fail-threshold }}
+          file_coverage_error_min: ${{ steps.coverage-config.outputs.file-coverage-error-min }}
+          file_coverage_warning_max: ${{ steps.coverage-config.outputs.file-coverage-warning-max }}
+          fail_on_negative_difference: ${{ steps.coverage-config.outputs.fail-on-negative-difference }}
+          retention_days: ${{ steps.coverage-config.outputs.retention-days }}
+          artifact_download_workflow_names: "Continuous integration"
+
+      - name: "Generating Markdown report"
+        if: github.event_name == 'pull_request' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
+        run: |
+          COVERAGE="${{ steps.coverage-report.outputs.coverage }}"
+          REPORT_FILE="code-coverage-results.md"
+          ARTIFACT_LINK="📥 [Download coverage-report artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) _(contains \`cobertura.xml\` for IDE import + config file)_"
+
+          # Split: keep header/badge visible, collapse the table inside <details>
+          FIRST_TABLE_LINE=$(grep -n "^|" "$REPORT_FILE" | head -1 | cut -d: -f1)
+
+          if [[ -z "$FIRST_TABLE_LINE" ]]; then
+            {
+              cat "$REPORT_FILE"
+              echo ""
+              echo "$ARTIFACT_LINK"
+            } > "${REPORT_FILE}.tmp"
+          else
+            {
+              head -n "$((FIRST_TABLE_LINE - 1))" "$REPORT_FILE"
+              echo ""
+              echo "<details>"
+              echo "<summary>📋 Details</summary>"
+              echo ""
+              tail -n "+${FIRST_TABLE_LINE}" "$REPORT_FILE"
+              echo ""
+              echo "$ARTIFACT_LINK"
+              echo ""
+              echo "</details>"
+            } > "${REPORT_FILE}.tmp"
+          fi
+
+          mv "${REPORT_FILE}.tmp" "$REPORT_FILE"
+
+      - name: "Add coverage PR comment"
+        if: github.event_name == 'pull_request' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
+        uses: "marocchino/sticky-pull-request-comment@v2"
+        with:
+          header: coverage
+          path: code-coverage-results.md

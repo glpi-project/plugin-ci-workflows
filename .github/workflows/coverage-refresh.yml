@@ -1,0 +1,94 @@
+name: "Coverage refresh"
+
+on:
+  workflow_call:
+    inputs:
+      plugin-key:
+        required: true
+        type: string
+      workflow-name:
+        description: "Name of the CI workflow to trigger for coverage refresh. Must match the 'name' field in the plugin's CI workflow file."
+        required: false
+        type: string
+        default: "Continuous integration"
+
+jobs:
+  check-and-refresh:
+    name: "Check and refresh coverage artifact"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v6"
+        with:
+          sparse-checkout: ".glpi-coverage.json"
+
+      - name: "Check coverage configuration"
+        id: "coverage-config"
+        run: |
+          CONFIG_FILE=".glpi-coverage.json"
+          if [[ ! -f "$CONFIG_FILE" ]]; then
+            echo "ℹ️ No $CONFIG_FILE found, skipping coverage refresh."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
+          if [[ "$ENABLED" != "true" ]]; then
+            echo "ℹ️ Code coverage is disabled via $CONFIG_FILE, skipping refresh."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: "Check artifact expiry"
+        if: steps.coverage-config.outputs.skip != 'true'
+        id: "check-expiry"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking for existing coverage artifacts..."
+
+          # The clearlyip action uses the naming pattern: coverage-{branch_name}
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          ARTIFACT_NAME="coverage-${DEFAULT_BRANCH}"
+
+          # List artifacts matching the coverage pattern
+          ARTIFACTS=$(gh api \
+            "/repos/${{ github.repository }}/actions/artifacts?name=${ARTIFACT_NAME}&per_page=1" \
+            --jq '.artifacts[0]' 2>/dev/null || echo "null")
+
+          if [[ "$ARTIFACTS" == "null" || -z "$ARTIFACTS" ]]; then
+            echo "⚠️ No coverage artifact found. Refresh needed."
+            echo "needs-refresh=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXPIRES_AT=$(echo "$ARTIFACTS" | jq -r '.expires_at // empty')
+          if [[ -z "$EXPIRES_AT" ]]; then
+            echo "⚠️ Could not determine artifact expiry. Refresh needed."
+            echo "needs-refresh=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXPIRES_TS=$(date -d "$EXPIRES_AT" +%s)
+          TOMORROW_TS=$(date -d "+1 day" +%s)
+
+          if [[ "$EXPIRES_TS" -le "$TOMORROW_TS" ]]; then
+            echo "⏰ Coverage artifact expires at $EXPIRES_AT (within 1 day). Refresh needed."
+            echo "needs-refresh=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Coverage artifact is valid until $EXPIRES_AT. No refresh needed."
+            echo "needs-refresh=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Trigger CI workflow"
+        if: steps.check-expiry.outputs.needs-refresh == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "🔄 Triggering CI workflow on default branch to refresh coverage artifact..."
+          gh workflow run "${{ inputs.workflow-name }}" \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.event.repository.default_branch }}"
+          echo "✅ Workflow dispatch triggered."
