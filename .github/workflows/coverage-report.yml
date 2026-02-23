@@ -16,7 +16,18 @@ jobs:
     runs-on: "ubuntu-latest"
     name: "Coverage report"
     steps:
+      - name: "Check target branch"
+        id: "check-branch"
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]]; then
+            echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${{ github.base_ref }})."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: "Download coverage report"
+        if: steps.check-branch.outputs.skip != 'true'
         uses: "actions/download-artifact@v7"
         with:
           name: "coverage-report"
@@ -24,6 +35,11 @@ jobs:
       - name: "Read coverage configuration"
         id: "coverage-config"
         run: |
+          if [[ "${{ steps.check-branch.outputs.skip }}" == "true" ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           CONFIG_FILE=".glpi-coverage.json"
           if [[ ! -f "$CONFIG_FILE" ]]; then
             echo "⚠️ No $CONFIG_FILE found, skipping coverage report."

@@ -76,6 +76,12 @@ jobs:
         shell: "bash"
         working-directory: "${{ github.workspace }}/${{ inputs.plugin-key }}"
         run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]]; then
+            echo "coverage-enabled=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${{ github.base_ref }})."
+            exit 0
+          fi
+
           CONFIG_FILE=".glpi-coverage.json"
           if [[ -f "$CONFIG_FILE" ]]; then
             ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
