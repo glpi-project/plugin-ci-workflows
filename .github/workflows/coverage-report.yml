@@ -67,7 +67,7 @@ jobs:
         run: |
           COVERAGE="${{ steps.coverage-report.outputs.coverage }}"
           REPORT_FILE="code-coverage-results.md"
-          ARTIFACT_LINK="📥 [Download coverage-report artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) _(contains \`cobertura.xml\` for IDE import + config file)_"
+          ARTIFACT_LINK="📥 [Download coverage-report artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) _(contains \`clover.xml\` for IDE import + config file)_"
 
           # Split: keep header/badge visible, collapse the table inside <details>
           FIRST_TABLE_LINE=$(grep -n "^|" "$REPORT_FILE" | head -1 | cut -d: -f1)
