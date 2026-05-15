@@ -143,15 +143,22 @@ jobs:
             -f ../../tests/LDAP/ldif/10-users.ldif \
             -H ldap://openldap:389
       - name: "Check CHANGELOG update"
-        if: ${{ !cancelled() && !inputs.skip-changelog-check && github.event_name == 'pull_request' && (hashFiles(format('{0}/CHANGELOG.md', inputs.plugin-key)) != '' || hashFiles(format('{0}/CHANGELOG', inputs.plugin-key)) != '') }}
+        if: ${{ !cancelled() && !inputs.skip-changelog-check && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && (hashFiles(format('{0}/CHANGELOG.md', inputs.plugin-key)) != '' || hashFiles(format('{0}/CHANGELOG', inputs.plugin-key)) != '') }}
         shell: "bash"
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          changed=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          pr_files=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            | jq -r '[.[].filename] | any(test("CHANGELOG"; "i"))')
-          if [[ "$changed" != "true" ]]; then
+            | jq -r '{
+                has_changelog: ([.[].filename] | any(test("CHANGELOG"; "i"))),
+                exempt:        ([.[].filename] | all(test("^locales/|^\\.github/"; "i")))
+              }')
+          if [[ $(echo "$pr_files" | jq -r '.exempt') == "true" ]]; then
+            echo "✅ Locale/CI-only PR, skipping CHANGELOG check."
+            exit 0
+          fi
+          if [[ $(echo "$pr_files" | jq -r '.has_changelog') != "true" ]]; then
             echo "❌ CHANGELOG was not updated in this PR."
             exit 1
           fi

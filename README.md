@@ -65,6 +65,8 @@ The `db-image` parameter is a combination of the DB server engine (`mysql`, `mar
 An optional `init-script` parameter can be used to define the path of an initialization script. This script will be executed with `bash`.
 It can be used, for instance, to install a specific PHP extension.
 
+On pull requests, the workflow checks that the `CHANGELOG` file has been updated. This check is automatically skipped for Dependabot PRs and when all changed files are in `locales/` or `.github/` (e.g. locale-update PRs). It can also be fully disabled via the `skip-changelog-check` parameter.
+
 ## Generate CI matrix
 
 This workflow can be used to generate a matrix that contains the default PHP/SQL versions that are supported by the target GLPI version.
