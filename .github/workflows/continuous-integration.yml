@@ -26,6 +26,9 @@ on:
         default: ""
       skip-changelog-check:
         description: "Set to true to skip the CHANGELOG update check on pull requests."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   ci:
