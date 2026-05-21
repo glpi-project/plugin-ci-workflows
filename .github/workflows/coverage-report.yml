@@ -119,7 +119,7 @@ jobs:
 
       - name: "Add coverage PR comment"
         if: steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
-        uses: "marocchino/sticky-pull-request-comment@v2"
+        uses: "marocchino/sticky-pull-request-comment@v3"
         with:
           header: coverage
           path: code-coverage-results.md
