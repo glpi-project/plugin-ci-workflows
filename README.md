@@ -61,6 +61,7 @@ The available `glpi-version`/`php-version` combinations corresponds to the `ghcr
 that can be found [here](https://github.com/orgs/glpi-project/packages/container/githubactions-glpi-apache/versions?filters%5Bversion_type%5D=tagged).
 
 The `db-image` parameter is a combination of the DB server engine (`mysql`, `mariadb` or `percona`) and the server version.
+
 - MariaDB available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-mariadb/versions?filters%5Bversion_type%5D=tagged)
 - MySQL available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-mysql/versions?filters%5Bversion_type%5D=tagged).
 - Percona available versions are listed [here](https://github.com/orgs/glpi-project/packages/container/githubactions-percona/versions?filters%5Bversion_type%5D=tagged).
@@ -84,14 +85,14 @@ All fields are optional. Default values are shown below:
 
 ```json
 {
-  "enabled": true,
-  "only_list_changed_files": true,
-  "badge": true,
-  "overall_coverage_fail_threshold": 0,
-  "file_coverage_error_min": 50,
-  "file_coverage_warning_max": 75,
-  "fail_on_negative_difference": false,
-  "retention_days": 90
+	"enabled": true,
+	"only_list_changed_files": true,
+	"badge": true,
+	"overall_coverage_fail_threshold": 0,
+	"file_coverage_error_min": 50,
+	"file_coverage_warning_max": 75,
+	"fail_on_negative_difference": false,
+	"retention_days": 90
 }
 ```
 
@@ -111,6 +112,7 @@ All fields are optional. Default values are shown below:
 ### IDE Integration
 
 The workflow produces a `coverage-report` artifact containing:
+
 - `clover.xml`: Use this file to import coverage into PhpStorm or other IDEs. Paths are automatically sanitized to match `plugins/<plugin-key>/`.
 - `cobertura.xml`: Used for the PR comment report.
 
@@ -126,25 +128,14 @@ The `coverage-report.yml` reusable workflow generates a PR comment with a covera
       plugin-key: "myplugin"
 ```
 
-### Coverage refresh workflow
-
-The `coverage-refresh.yml` reusable workflow ensures that the base branch coverage artifact stays available for comparison.
-It checks the artifact expiry date via the GitHub API and triggers the CI workflow on the default branch only if the artifact is missing or will expire within the next day.
-
-It should be triggered on `schedule` events (the daily cron in the CI workflow):
-
-```yaml
-  coverage-refresh:
-    if: github.event_name == 'schedule'
-    uses: "glpi-project/plugin-ci-workflows/.github/workflows/coverage-refresh.yml@v1"
-    with:
-      plugin-key: "myplugin"
-```
+> **Note:** For base branch comparison to work, the CI workflow must run on every push to the default branch so that an up-to-date coverage artifact is always available.
+> 
+> A scheduled CI run (e.g., daily cron) is also recommended to ensure the artifact is regenerated before it expires.
 
 ## Generate CI matrix
 
 This workflow can be used to generate a matrix that contains the default PHP/SQL versions that are supported by the target GLPI version.
-You can use it in combination with the `Continuous Integration` workflow, as shown in the example below.
+You can use it in combination with the `Continuous Integration` and the `Coverage report` workflows, as shown in the example below.
 
 ```yaml
 name: "Continuous integration"
@@ -188,6 +179,7 @@ jobs:
       db-image: "${{ matrix.db-image }}"
 
   coverage-report:
+    if: github.event_name == 'pull_request'
     needs: "ci"
     uses: "glpi-project/plugin-ci-workflows/.github/workflows/coverage-report.yml@v1"
     with:

@@ -6,6 +6,11 @@ on:
       plugin-key:
         required: true
         type: string
+      workflow-name:
+        description: "Name of the CI workflow that produces the coverage artifact."
+        required: false
+        type: string
+        default: "Continuous integration"
 
 permissions:
   pull-requests: write
@@ -15,11 +20,12 @@ jobs:
   coverage-report:
     runs-on: "ubuntu-latest"
     name: "Coverage report"
+    if: github.event_name == 'pull_request'
     steps:
       - name: "Check target branch"
         id: "check-branch"
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]]; then
+          if [[ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]]; then
             echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${{ github.base_ref }})."
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -76,10 +82,10 @@ jobs:
           file_coverage_warning_max: ${{ steps.coverage-config.outputs.file-coverage-warning-max }}
           fail_on_negative_difference: ${{ steps.coverage-config.outputs.fail-on-negative-difference }}
           retention_days: ${{ steps.coverage-config.outputs.retention-days }}
-          artifact_download_workflow_names: "Continuous integration"
+          artifact_download_workflow_names: "${{ inputs.workflow-name }}"
 
       - name: "Generating Markdown report"
-        if: github.event_name == 'pull_request' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
+        if: steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
         run: |
           COVERAGE="${{ steps.coverage-report.outputs.coverage }}"
           REPORT_FILE="code-coverage-results.md"
@@ -112,7 +118,7 @@ jobs:
           mv "${REPORT_FILE}.tmp" "$REPORT_FILE"
 
       - name: "Add coverage PR comment"
-        if: github.event_name == 'pull_request' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
+        if: steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
         uses: "marocchino/sticky-pull-request-comment@v2"
         with:
           header: coverage

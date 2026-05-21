@@ -378,15 +378,6 @@ jobs:
         shell: "bash"
         run: |
           sudo service apache2 start
-      - name: "Setup coverage driver"
-        if: ${{ !cancelled() && steps.coverage-config.outputs.coverage-enabled == 'true' }}
-        shell: "bash"
-        run: |
-          if ! php -m | grep -q -E 'xdebug|pcov'; then
-             echo -e "\033[0;33mInstalling PCOV driver...\033[0m"
-             sudo pecl install pcov || true
-          fi
-
       - name: "PHPUnit"
         if: ${{ !cancelled() && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
         env:
@@ -395,18 +386,15 @@ jobs:
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
           PHPUNIT_FLAGS="--colors=always"
-          PHP_CMD="php"
 
           if [[ "${{ steps.coverage-config.outputs.coverage-enabled }}" == "true" ]]; then
             PHPUNIT_FLAGS="$PHPUNIT_FLAGS --coverage-text --coverage-cobertura=cobertura.xml --coverage-clover=clover.xml"
-            # Explicitly load PCOV if needed
-            PHP_CMD="php -d extension=pcov.so"
           fi
 
           if [[ -f "vendor/bin/phpunit" ]]; then
-            $PHP_CMD vendor/bin/phpunit $PHPUNIT_FLAGS
+            php vendor/bin/phpunit $PHPUNIT_FLAGS
           elif [[ -f "../../vendor/bin/phpunit" ]]; then
-            $PHP_CMD ../../vendor/bin/phpunit $PHPUNIT_FLAGS
+            php ../../vendor/bin/phpunit $PHPUNIT_FLAGS
           else
             echo -e "\033[0;31mPHPUnit binary not found!\033[0m"
             exit 1
