@@ -38,7 +38,7 @@ act push \
   --artifact-server-path ~/.cache/act-artifacts
 ```
 
-`--artifact-server-path` runs a local cache server pour les steps `actions/cache` — Composer et npm sont restaurés depuis le disque au lieu du réseau. Créer le répertoire une fois avant le premier run :
+`--artifact-server-path` runs a local cache server for `actions/cache` steps — Composer and npm packages are restored from disk instead of the network. Create the directory once before the first run:
 
 ```bash
 mkdir -p ~/.cache/act-artifacts
