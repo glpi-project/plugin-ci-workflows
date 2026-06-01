@@ -374,3 +374,54 @@ jobs:
             echo -e "\033[0;31mTwigCS binary not found!\033[0m"
             exit 1
           fi
+      - name: "Check plugin uninstall cleanliness"
+        if: ${{ !cancelled() }}
+        working-directory: "/var/www/glpi"
+        run: |
+          echo -e "\033[0;33mDeactivating plugin...\033[0m"
+          bin/console plugin:deactivate --ansi --no-interaction ${{ inputs.plugin-key }}
+          echo -e "\033[0;33mUninstalling plugin...\033[0m"
+          bin/console plugin:uninstall --ansi --no-interaction ${{ inputs.plugin-key }}
+          cat > /tmp/check-uninstall.php << 'PHPEOF'
+          <?php
+          $plugin_key   = $argv[1] ?? '';
+          $class_prefix = 'Plugin' . ucfirst($plugin_key);
+          if ($plugin_key === '') {
+              fwrite(STDERR, "Usage: php check-uninstall.php <plugin-key>\n");
+              exit(1);
+          }
+          mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+          $db = new mysqli('db', 'root', '', 'glpi');
+          $failures = false;
+          echo "\033[0;33mChecking for leftover database tables...\033[0m\n";
+          $result = $db->query("SHOW TABLES LIKE 'glpi_plugin_{$plugin_key}%'");
+          $tables = [];
+          while ($row = $result->fetch_row()) {
+              $tables[] = $row[0];
+          }
+          if ($tables) {
+              echo "❌ Leftover tables after uninstall:\n" . implode("\n", $tables) . "\n";
+              $failures = true;
+          } else {
+              echo "✅ No leftover tables.\n";
+          }
+          foreach ([
+              ['Checking for leftover plugin configuration...', "SELECT COUNT(*) FROM glpi_configs WHERE context = 'plugin:{$plugin_key}'",        'row(s) in glpi_configs'],
+              ['Checking for leftover cron tasks...',           "SELECT COUNT(*) FROM glpi_crontasks WHERE itemtype LIKE '{$class_prefix}%'",      'row(s) in glpi_crontasks'],
+              ['Checking for leftover profile rights...',       "SELECT COUNT(*) FROM glpi_profilerights WHERE name LIKE 'plugin_{$plugin_key}%'", 'row(s) in glpi_profilerights'],
+          ] as [$label, $sql, $entity]) {
+              echo "\033[0;33m{$label}\033[0m\n";
+              $count = (int) $db->query($sql)->fetch_row()[0];
+              if ($count > 0) {
+                  echo "❌ {$count} leftover {$entity}.\n";
+                  $failures = true;
+              } else {
+                  echo "✅ None.\n";
+              }
+          }
+          if ($failures) {
+              fwrite(STDERR, "\033[0;31mPlugin uninstall left residual data in the database.\033[0m\n");
+              exit(1);
+          }
+          PHPEOF
+          php /tmp/check-uninstall.php ${{ inputs.plugin-key }}
