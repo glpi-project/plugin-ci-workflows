@@ -133,7 +133,7 @@ jobs:
             if [[ -n "$CORE_VERSION" ]]; then
               PLUGIN_VERSION=$(echo "$PLUGIN_PROD_JSON" | jq -r --arg n "$plugin_dep" '(.installed? // [])[] | select(.name == $n) | .version')
               if [[ "$PLUGIN_VERSION" != "$CORE_VERSION" ]]; then
-                echo "⚠️  Version mismatch: '$plugin_dep' is a GLPI core dev dependency (v${CORE_VERSION}) but plugin requires v${PLUGIN_VERSION}. This may cause issues in local development."
+                echo "❌  Version mismatch: '$plugin_dep' is a GLPI core dev dependency (${CORE_VERSION}) but plugin requires ${PLUGIN_VERSION}. This may cause issues in local development."
                 HAS_ISSUE='true'
               fi
             fi
