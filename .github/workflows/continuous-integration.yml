@@ -114,19 +114,32 @@ jobs:
         if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         run: |
           echo -e "\033[0;33mChecking for common dependencies between plugin and core...\033[0m"
-          PLUGIN_DEPS=$(composer show --direct --format=json | jq -r '(.installed? // [])[] | .name')
-          CORE_DEPS=$(cd ../../ && composer show --direct --format=json | jq -r '(.installed? // [])[] | .name')
-          HAS_MATCH='false'
-          for plugin_dep in $PLUGIN_DEPS; do
-            for core_dep in $CORE_DEPS; do
-              if [[ "$plugin_dep" == "$core_dep" && "$plugin_dep" != "glpi-project/tools" ]]; then
-                echo "❌ Conflict: '$plugin_dep' is present in both plugin and core."
-                HAS_MATCH='true'
+          PLUGIN_PROD_JSON=$(composer show --direct --no-dev --format=json)
+          CORE_PROD_JSON=$(cd ../../ && composer show --direct --no-dev --format=json)
+          CORE_ALL_JSON=$(cd ../../ && composer show --direct --format=json)
+          PLUGIN_PROD_NAMES=$(echo "$PLUGIN_PROD_JSON" | jq -r '(.installed? // [])[] | .name')
+          CORE_PROD_NAMES=$(echo "$CORE_PROD_JSON" | jq -r '(.installed? // [])[] | .name')
+          HAS_ISSUE='false'
+          for plugin_dep in $PLUGIN_PROD_NAMES; do
+            if [[ "$plugin_dep" == "glpi-project/tools" ]]; then
+              continue
+            fi
+            if echo "$CORE_PROD_NAMES" | grep -qx "$plugin_dep"; then
+              echo "❌ Conflict: '$plugin_dep' is present in both plugin and core production dependencies."
+              HAS_ISSUE='true'
+              continue
+            fi
+            CORE_VERSION=$(echo "$CORE_ALL_JSON" | jq -r --arg n "$plugin_dep" '(.installed? // [])[] | select(.name == $n) | .version')
+            if [[ -n "$CORE_VERSION" ]]; then
+              PLUGIN_VERSION=$(echo "$PLUGIN_PROD_JSON" | jq -r --arg n "$plugin_dep" '(.installed? // [])[] | select(.name == $n) | .version')
+              if [[ "$PLUGIN_VERSION" != "$CORE_VERSION" ]]; then
+                echo "⚠️  Version mismatch: '$plugin_dep' is a GLPI core dev dependency (v${CORE_VERSION}) but plugin requires v${PLUGIN_VERSION}. This may cause issues in local development."
+                HAS_ISSUE='true'
               fi
-            done
+            fi
           done
-          if [[ "$HAS_MATCH" == 'true' ]]; then
-            echo -e "\033[0;31mDependency conflicts detected. Please resolve them before proceeding.\033[0m"
+          if [[ "$HAS_ISSUE" == 'true' ]]; then
+            echo -e "\033[0;31mDependency issues detected. Please resolve them before proceeding.\033[0m"
             exit 1
           fi
           echo "✅ No dependency conflicts detected."
