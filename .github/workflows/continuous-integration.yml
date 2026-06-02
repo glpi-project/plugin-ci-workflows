@@ -410,6 +410,7 @@ jobs:
               ['Checking for leftover plugin configuration...', "SELECT COUNT(*) FROM glpi_configs WHERE context = 'plugin:{$plugin_key}'",        'row(s) in glpi_configs'],
               ['Checking for leftover cron tasks...',           "SELECT COUNT(*) FROM glpi_crontasks WHERE itemtype LIKE '{$class_prefix}%' OR itemtype LIKE '{$ns_prefix}%'", 'row(s) in glpi_crontasks'],
               ['Checking for leftover profile rights...',       "SELECT COUNT(*) FROM glpi_profilerights WHERE name LIKE 'plugin_{$plugin_key}%'", 'row(s) in glpi_profilerights'],
+              ['Checking for leftover display preferences...',  "SELECT COUNT(*) FROM glpi_displaypreferences WHERE itemtype LIKE '{$class_prefix}%'", 'row(s) in glpi_displaypreferences'],
           ] as [$label, $sql, $entity]) {
               echo "\033[0;33m{$label}\033[0m\n";
               $count = (int) $db->query($sql)->fetch_row()[0];
