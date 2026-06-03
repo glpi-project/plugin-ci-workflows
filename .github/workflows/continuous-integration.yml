@@ -379,21 +379,22 @@ jobs:
           sudo service apache2 start
       - name: "PHPUnit"
         if: ${{ !cancelled() && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
-        env:
-          PCOV_ENABLED: "${{ steps.coverage-config.outputs.coverage-enabled == 'true' && '1' || '0' }}"
-          XDEBUG_MODE: "${{ steps.coverage-config.outputs.coverage-enabled == 'true' && 'coverage' || 'off' }}"
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
           PHPUNIT_FLAGS="--colors=always"
+          PHP_FLAGS=""
 
           if [[ "${{ steps.coverage-config.outputs.coverage-enabled }}" == "true" ]]; then
             PHPUNIT_FLAGS="$PHPUNIT_FLAGS --coverage-text --coverage-cobertura=cobertura.xml --coverage-clover=clover.xml"
+            # pcov is installed in the image but disabled by default (pcov.enabled=0).
+            # Enabling it and scoping it to only the plugin. No need to run coverage on the rest of GLPI code.
+            PHP_FLAGS="-d pcov.enabled=1 -d pcov.directory=."
           fi
 
           if [[ -f "vendor/bin/phpunit" ]]; then
-            php vendor/bin/phpunit $PHPUNIT_FLAGS
+            php $PHP_FLAGS vendor/bin/phpunit $PHPUNIT_FLAGS
           elif [[ -f "../../vendor/bin/phpunit" ]]; then
-            php ../../vendor/bin/phpunit $PHPUNIT_FLAGS
+            php $PHP_FLAGS ../../vendor/bin/phpunit $PHPUNIT_FLAGS
           else
             echo -e "\033[0;31mPHPUnit binary not found!\033[0m"
             exit 1
