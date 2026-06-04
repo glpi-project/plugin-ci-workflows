@@ -78,7 +78,7 @@ jobs:
 
       - name: "Generate coverage report"
         if: steps.coverage-config.outputs.skip != 'true'
-        uses: "clearlyip/code-coverage-report-action@v6"
+        uses: "clearlyip/code-coverage-report-action@v7"
         id: "coverage-report"
         with:
           filename: "cobertura.xml"
