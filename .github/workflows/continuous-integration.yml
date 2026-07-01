@@ -409,7 +409,7 @@ jobs:
           echo "Sanitizing paths in clover.xml..."
           sed -i 's|/var/www/glpi/plugins/${{ inputs.plugin-key }}/|plugins/${{ inputs.plugin-key }}/|g' clover.xml
       - name: "Upload coverage report"
-        uses: "actions/upload-artifact@v6"
+        uses: "actions/upload-artifact@v7"
         if: ${{ !cancelled() && steps.coverage-config.outputs.coverage-enabled == 'true' }}
         with:
           name: "coverage-report"
