@@ -41,7 +41,7 @@ jobs:
 
       - name: "Download coverage report"
         if: steps.check-branch.outputs.skip != 'true'
-        uses: "actions/download-artifact@v7"
+        uses: "actions/download-artifact@v8"
         with:
           name: "coverage-report"
 
