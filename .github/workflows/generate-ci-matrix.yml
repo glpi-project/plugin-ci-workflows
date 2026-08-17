@@ -71,5 +71,27 @@ jobs:
                 }
               '
             fi
+          elif [[ "${{ inputs.glpi-version }}" = "12.0.x" ]]; then
+            if [[ "${{ inputs.complete-matrix && 'true' || 'false' }}" = "true" ]]; then
+              MATRIX='
+                {
+                  "include": [
+                    {"glpi-version": "12.0.x", "php-version": "8.3", "db-image": "mariadb:10.11"},
+                    {"glpi-version": "12.0.x", "php-version": "8.4", "db-image": "mariadb:12.3"},
+                    {"glpi-version": "12.0.x", "php-version": "8.5", "db-image": "mysql:8.0"},
+                    {"glpi-version": "12.0.x", "php-version": "8.5", "db-image": "mysql:9.7"}
+                  ]
+                }
+              '
+            else
+              MATRIX='
+                {
+                  "include": [
+                    {"glpi-version": "12.0.x", "php-version": "8.3", "db-image": "mariadb:10.11"},
+                    {"glpi-version": "12.0.x", "php-version": "8.5", "db-image": "mariadb:12.3"}
+                  ]
+                }
+              '
+            fi
           fi
           echo "matrix=$(echo $MATRIX | jq -c .)" >> $GITHUB_OUTPUT
