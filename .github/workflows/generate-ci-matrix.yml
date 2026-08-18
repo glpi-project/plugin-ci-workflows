@@ -55,14 +55,14 @@ jobs:
             },
             "12.0.x": {
               "minimal": [
-                {"php-version": "8.2", "db-image": "mariadb:10.6"},
-                {"php-version": "8.5", "db-image": "mariadb:11.8"}
+                {"php-version": "8.3", "db-image": "mariadb:10.11"},
+                {"php-version": "8.5", "db-image": "mariadb:12.3"}
               ],
               "complete": [
-                {"php-version": "8.2", "db-image": "mariadb:10.6"},
-                {"php-version": "8.3", "db-image": "mariadb:11.8"},
-                {"php-version": "8.4", "db-image": "mysql:8.0"},
-                {"php-version": "8.5", "db-image": "mysql:8.4"}
+                {"php-version": "8.3", "db-image": "mariadb:10.11"},
+                {"php-version": "8.4", "db-image": "mariadb:12.3"},
+                {"php-version": "8.5", "db-image": "mysql:8.0"},
+                {"php-version": "8.5", "db-image": "mysql:9.7"}
               ]
             }
           }
