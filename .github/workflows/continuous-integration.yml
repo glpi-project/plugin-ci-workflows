@@ -431,6 +431,18 @@ jobs:
             echo -e "\033[0;31mJest binary not found!\033[0m"
             exit 1
           fi
+      - name: "Vitest"
+        if: ${{ !cancelled() && (hashFiles(format('{0}/vitest.config.js', inputs.plugin-key)) != '' || hashFiles(format('{0}/vitest.config.ts', inputs.plugin-key)) != '' || hashFiles(format('{0}/vitest.config.mjs', inputs.plugin-key)) != '') }}
+        run: |
+          echo -e "\033[0;33mExecuting Vitest...\033[0m"
+          if [[ -f "node_modules/.bin/vitest" ]]; then
+            node_modules/.bin/vitest run --color
+          elif [[ -f "../../node_modules/.bin/vitest" ]]; then
+            ../../node_modules/.bin/vitest run --color
+          else
+            echo -e "\033[0;31mVitest binary not found!\033[0m"
+            exit 1
+          fi
       - name: "TwigCS"
         if: ${{ !cancelled() && hashFiles(format('{0}/.twig_cs.dist.php', inputs.plugin-key)) != '' }}
         run: |
