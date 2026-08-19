@@ -73,6 +73,48 @@ On pull requests, the workflow checks that the `CHANGELOG` file has been updated
 
 On pull requests that modify `plugin.xml` or `<plugin-key>.xml`, the workflow also validates that all URLs declared in the file are reachable. URLs inside `<download_url>` tags that are newly introduced by the PR only produce a warning (the release archive may not be published yet), while all other invalid URLs fail the check.
 
+## End-to-end tests workflow
+
+This workflow runs the plugin's Playwright specs (`tests/e2e/specs`) against a dedicated `e2e_testing` GLPI environment.
+It is kept separate from the `continuous-integration.yml` workflow because it needs its own database and a browser install, which the CI workflow does not provide.
+
+```yaml
+name: "End-to-end tests"
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    uses: "glpi-project/plugin-ci-workflows/.github/workflows/e2e-tests.yml@v1"
+    with:
+      # The plugin key (system name).
+      plugin-key: "myplugin"
+
+      # The version of GLPI on which to run the tests.
+      glpi-version: "12.0.x"
+
+      # The version of PHP on which to run the tests.
+      php-version: "8.3"
+
+      # The database docker image on which to run the tests.
+      db-image: "mariadb:10.6"
+```
+
+See the [Continuous integration workflow](#continuous-integration-workflow) section above for the available `glpi-version`/`php-version`/`db-image` combinations.
+
+The plugin specs are auto-discovered by GLPI's own `playwright.config.ts` as the `plugin:<plugin-key>` project, so no plugin-side Playwright configuration is required beyond the `tests/e2e/specs` directory.
+
 ## Code coverage
 
 Code coverage is automatically enabled when a `.glpi-coverage.json` configuration file is present at the root of the plugin directory.
@@ -172,6 +214,19 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate-ci-matrix.outputs.matrix) }}
     uses: "glpi-project/plugin-ci-workflows/.github/workflows/continuous-integration.yml@v1"
+    with:
+      plugin-key: "myplugin"
+      glpi-version: "${{ matrix.glpi-version }}"
+      php-version: "${{ matrix.php-version }}"
+      db-image: "${{ matrix.db-image }}"
+
+  e2e:
+    name: "Playwright - GLPI ${{ matrix.glpi-version }} - php:${{ matrix.php-version }} - ${{ matrix.db-image }}"
+    needs: "generate-ci-matrix"
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-ci-matrix.outputs.matrix) }}
+    uses: "glpi-project/plugin-ci-workflows/.github/workflows/e2e-tests.yml@v1"
     with:
       plugin-key: "myplugin"
       glpi-version: "${{ matrix.glpi-version }}"

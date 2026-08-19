@@ -1,0 +1,133 @@
+# Reusable Playwright e2e workflow, kept separate from `continuous-integration.yml`
+# because it needs a dedicated e2e_testing database/environment and browser
+# install, which the CI workflow does not provide.
+name: "End-to-end tests"
+
+on:
+  workflow_call:
+    inputs:
+      plugin-key:
+        required: true
+        type: string
+      glpi-version:
+        required: true
+        type: string
+      php-version:
+        required: true
+        type: string
+      db-image:
+        required: true
+        type: string
+
+jobs:
+  e2e:
+    name: "Playwright"
+    runs-on: "ubuntu-latest"
+    container:
+      image: "ghcr.io/glpi-project/githubactions-glpi-apache:php-${{ inputs.php-version }}-glpi-${{ inputs.glpi-version }}"
+      # `--user github-actions-runner` is mandatory to prevent rights issues on mounted volume during checkout operation
+      options: >-
+        --volume ${{ github.workspace }}:/var/www/glpi/plugins:rw
+        --user github-actions-runner
+    services:
+      db:
+        image: "ghcr.io/glpi-project/githubactions-${{ inputs.db-image }}"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: "glpi_e2e"
+        options: >-
+          --shm-size=1g
+    defaults:
+      run:
+        # By default, execute commands using the `www-data` user to prevent rights issues on GLPI generated files.
+        shell: "sudo --set-home --user=www-data --preserve-env bash --noprofile --norc -eo pipefail {0}"
+        working-directory: "/var/www/glpi"
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+        with:
+          path: "${{ inputs.plugin-key }}"
+
+      - name: "Fix plugin directory ownership"
+        # Use default `bash` shell with `github-actions-runner` user, the only
+        # one allowed passwordless sudo.
+        shell: "bash"
+        run: |
+          sudo setfacl --recursive --modify u:www-data:rwx "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
+
+      - name: "Mark plugin directory as safe for git"
+        run: |
+          git config --global --add safe.directory "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
+
+      - name: "Restore composer cache"
+        uses: "actions/cache@v6"
+        with:
+          path: "/var/www/glpi/plugins/${{ inputs.plugin-key }}/vendor"
+          key: "${{ inputs.plugin-key }}-composer-${{ hashFiles(format('{0}/composer.lock', inputs.plugin-key)) }}"
+
+      - name: "Install composer dependencies"
+        working-directory: "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
+        run: |
+          composer install --ansi --no-interaction --no-progress --prefer-dist
+
+      - name: "Install e2e database"
+        # Port 8090 is the vhost bound to GLPI_ENVIRONMENT_TYPE=e2e_testing in
+        # this image; port 80 serves a different (unconfigured) environment.
+        run: |
+          bin/console database:install --ansi --no-interaction --force --reconfigure --no-telemetry \
+            --db-host=db --db-name=glpi_e2e --db-user=root --db-password="" \
+            --env=e2e_testing
+          bin/console config:set url_base "http://localhost:8090" --env=e2e_testing
+          bin/console config:set url_base_api "http://localhost:8090/apirest.php" --env=e2e_testing
+
+      - name: "Install and activate plugin"
+        run: |
+          bin/console plugin:install --ansi --no-interaction --username=glpi "${{ inputs.plugin-key }}" --env=e2e_testing
+          bin/console plugin:activate --ansi --no-interaction "${{ inputs.plugin-key }}" --env=e2e_testing
+
+      - name: "Run apache"
+        # Use default `bash` shell with `github-actions-runner` user
+        shell: "bash"
+        run: |
+          sudo service apache2 start
+
+      - name: "Read installed Playwright version"
+        id: "playwright-version"
+        # Use default `bash` shell with `github-actions-runner` user: only this
+        # user can write to the runner-owned $GITHUB_OUTPUT file.
+        shell: "bash"
+        run: |
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: "Restore Playwright browser cache"
+        id: "playwright-cache"
+        uses: "actions/cache@v6"
+        with:
+          path: "/home/www-data/.cache/ms-playwright"
+          key: "playwright-chromium-${{ steps.playwright-version.outputs.version }}"
+
+      - name: "Install Playwright browser"
+        if: "steps.playwright-cache.outputs.cache-hit != 'true'"
+        run: |
+          npx playwright install chromium
+
+      - name: "Install Playwright system dependencies"
+        # Use default `bash` shell with `github-actions-runner` user: this
+        # command needs passwordless sudo to install system packages as root.
+        shell: "bash"
+        run: |
+          npx playwright install-deps chromium
+
+      - name: "Playwright"
+        env:
+          E2E_BASE_URL: "http://localhost:8090"
+        run: |
+          npx playwright test --project="plugin:${{ inputs.plugin-key }}" --reporter=html
+
+      - name: "Upload Playwright report"
+        if: ${{ !cancelled() }}
+        uses: "actions/upload-artifact@v7"
+        with:
+          name: "playwright-report"
+          path: "/var/www/glpi/tests/e2e/results"
+          retention-days: 7
