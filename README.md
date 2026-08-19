@@ -55,6 +55,12 @@ jobs:
 
       # Whether to enable code coverage generation (default: false).
       code-coverage: true
+    secrets:
+      # Optional newline-separated KEY=VALUE pairs, exposed as environment
+      # variables during the PHPUnit step (e.g. tokens for tests hitting a
+      # live external API).
+      extra-env: |
+        MY_API_TOKEN=${{ secrets.MY_API_TOKEN }}
 ```
 
 The available `glpi-version`/`php-version` combinations corresponds to the `ghcr.io/glpi-project/githubactions-glpi-apache` images tags
@@ -68,6 +74,8 @@ The `db-image` parameter is a combination of the DB server engine (`mysql`, `mar
 
 An optional `init-script` parameter can be used to define the path of an initialization script. This script will be executed with `bash`.
 It can be used, for instance, to install a specific PHP extension.
+
+An optional `extra-env` secret can be used to expose additional environment variables during the PHPUnit step, for instance credentials required by tests that hit a live external API.
 
 On pull requests, the workflow checks that the `CHANGELOG` file has been updated. This check is automatically skipped for Dependabot PRs and when all changed files are in `locales/` or `.github/` (e.g. locale-update PRs). It can also be fully disabled via the `skip-changelog-check` parameter.
 

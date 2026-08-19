@@ -29,6 +29,10 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      extra-env:
+        description: "Optional newline-separated KEY=VALUE pairs, exposed as environment variables during the PHPUnit step."
+        required: false
 
 jobs:
   ci:
@@ -379,10 +383,18 @@ jobs:
           sudo service apache2 start
       - name: "PHPUnit"
         if: ${{ !cancelled() && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
+        env:
+          EXTRA_ENV: ${{ secrets.extra-env }}
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
           PHPUNIT_FLAGS="--colors=always"
           PHP_FLAGS=""
+
+          if [[ -n "$EXTRA_ENV" ]]; then
+            set -a
+            source <(echo "$EXTRA_ENV")
+            set +a
+          fi
 
           if [[ "${{ steps.coverage-config.outputs.coverage-enabled }}" == "true" ]]; then
             PHPUNIT_FLAGS="$PHPUNIT_FLAGS --coverage-text --coverage-cobertura=cobertura.xml --coverage-clover=clover.xml"
