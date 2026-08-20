@@ -43,6 +43,11 @@ jobs:
         shell: "sudo --set-home --user=www-data --preserve-env bash --noprofile --norc -eo pipefail {0}"
         working-directory: "/var/www/glpi"
     steps:
+      - name: "Validate plugin-key"
+        shell: "bash"
+        run: |
+          [[ "${{ inputs.plugin-key }}" =~ ^[a-z][a-z0-9_-]*$ ]] || { echo "Invalid plugin-key"; exit 1; }
+
       - name: "Checkout"
         uses: "actions/checkout@v7"
         with:
@@ -108,8 +113,10 @@ jobs:
 
       - name: "Install Playwright browser"
         if: "steps.playwright-cache.outputs.cache-hit != 'true'"
+        # Cache save runs as a different user than www-data; must be world-readable.
         run: |
           npx playwright install chromium
+          chmod -R a+rX "$HOME/.cache/ms-playwright"
 
       - name: "Install Playwright system dependencies"
         # Use default `bash` shell with `github-actions-runner` user: this
@@ -129,5 +136,5 @@ jobs:
         uses: "actions/upload-artifact@v7"
         with:
           name: "playwright-report"
-          path: "/var/www/glpi/tests/e2e/results"
+          path: "/var/www/glpi/playwright-report"
           retention-days: 7
