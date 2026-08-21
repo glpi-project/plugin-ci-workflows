@@ -42,6 +42,8 @@ jobs:
         # By default, execute commands using the `www-data` user to prevent rights issues on GLPI generated files.
         shell: "sudo --set-home --user=www-data --preserve-env bash --noprofile --norc -eo pipefail {0}"
         working-directory: "/var/www/glpi"
+    env:
+      CACHE_DIR: "/home/www-data/.cache/e2e-tests-workflow"
     steps:
       - name: "Validate plugin-key"
         shell: "bash"
@@ -53,24 +55,38 @@ jobs:
         with:
           path: "${{ inputs.plugin-key }}"
 
-      - name: "Fix plugin directory ownership"
-        # Use default `bash` shell with `github-actions-runner` user, the only
-        # one allowed passwordless sudo.
+      - name: "Configure cache directories"
+        # sudo needs the `github-actions-runner` user (only one with passwordless sudo).
         shell: "bash"
         run: |
+          sudo mkdir --parents "${{ env.CACHE_DIR }}/composer"
+          sudo chown --recursive github-actions-runner "${{ env.CACHE_DIR }}"
+          composer config cache-dir "${{ env.CACHE_DIR }}/composer"
+
+      - name: "Restore cache"
+        uses: "actions/cache@v6"
+        with:
+          path: |
+            ${{ env.CACHE_DIR }}
+          key: "${{ inputs.plugin-key }}-dependencies-${{ inputs.php-version }}-${{ github.job }}-${{ hashFiles(format('{0}/composer.lock', inputs.plugin-key)) }}"
+          restore-keys: |
+            ${{ inputs.plugin-key }}-dependencies-${{ inputs.php-version }}-${{ github.job }}-
+            ${{ inputs.plugin-key }}-dependencies-${{ inputs.php-version }}-
+            ${{ inputs.plugin-key }}-dependencies-
+
+      - name: "Fix directories ACL"
+        # Runs after cache restore so cache-extracted files (owned by github-actions-runner) get the ACL too.
+        shell: "bash"
+        run: |
+          sudo setfacl --recursive --modify u:www-data:rwx "${{ env.CACHE_DIR }}"
           sudo setfacl --recursive --modify u:www-data:rwx "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
 
       - name: "Mark plugin directory as safe for git"
         run: |
           git config --global --add safe.directory "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
 
-      - name: "Restore composer cache"
-        uses: "actions/cache@v6"
-        with:
-          path: "/var/www/glpi/plugins/${{ inputs.plugin-key }}/vendor"
-          key: "${{ inputs.plugin-key }}-composer-${{ hashFiles(format('{0}/composer.lock', inputs.plugin-key)) }}"
-
       - name: "Install composer dependencies"
+        if: ${{ hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
         working-directory: "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
         run: |
           composer install --ansi --no-interaction --no-progress --prefer-dist
@@ -91,36 +107,18 @@ jobs:
           bin/console plugin:activate --ansi --no-interaction "${{ inputs.plugin-key }}" --env=e2e_testing
 
       - name: "Run apache"
-        # Use default `bash` shell with `github-actions-runner` user
         shell: "bash"
         run: |
           sudo service apache2 start
 
-      - name: "Read installed Playwright version"
-        id: "playwright-version"
-        # Use default `bash` shell with `github-actions-runner` user: only this
-        # user can write to the runner-owned $GITHUB_OUTPUT file.
-        shell: "bash"
-        run: |
-          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: "Restore Playwright browser cache"
-        id: "playwright-cache"
-        uses: "actions/cache@v6"
-        with:
-          path: "/home/www-data/.cache/ms-playwright"
-          key: "playwright-chromium-${{ steps.playwright-version.outputs.version }}"
-
       - name: "Install Playwright browser"
-        if: "steps.playwright-cache.outputs.cache-hit != 'true'"
-        # Cache save runs as a different user than www-data; must be world-readable.
+        # Not cached: Playwright recommends against it (restore time ≈ download time),
+        # and OS deps below are reinstalled on every run regardless.
         run: |
           npx playwright install chromium
-          chmod -R a+rX "$HOME/.cache/ms-playwright"
 
       - name: "Install Playwright system dependencies"
-        # Use default `bash` shell with `github-actions-runner` user: this
-        # command needs passwordless sudo to install system packages as root.
+        # Needs passwordless sudo to install system packages as root.
         shell: "bash"
         run: |
           npx playwright install-deps chromium
@@ -135,6 +133,6 @@ jobs:
         if: ${{ !cancelled() }}
         uses: "actions/upload-artifact@v7"
         with:
-          name: "playwright-report"
+          name: "playwright-report-${{ inputs.glpi-version }}-${{ inputs.php-version }}"
           path: "/var/www/glpi/playwright-report"
           retention-days: 7
