@@ -57,7 +57,10 @@ jobs:
 
       - name: "Configure cache directories"
         # sudo needs the `github-actions-runner` user (only one with passwordless sudo).
+        # working-directory is the plugin dir so `composer config` writes to its local
+        # composer.json, readable regardless of which user runs later composer commands.
         shell: "bash"
+        working-directory: "/var/www/glpi/plugins/${{ inputs.plugin-key }}"
         run: |
           sudo mkdir --parents "${{ env.CACHE_DIR }}/composer"
           sudo chown --recursive github-actions-runner "${{ env.CACHE_DIR }}"
