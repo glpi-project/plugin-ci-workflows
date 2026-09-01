@@ -520,3 +520,191 @@ jobs:
           }
           PHPEOF
           php /tmp/check-uninstall.php ${{ inputs.plugin-key }}
+
+  detect-e2e-tests:
+    name: "Detect E2E tests"
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: "read"
+    outputs:
+      has-e2e-tests: "${{ steps.detect.outputs.has-e2e-tests }}"
+    steps:
+      - name: "Checkout plugin"
+        uses: "actions/checkout@v6"
+        with:
+          # Only fetch the `tests/e2e` tree (shallow, cone mode): we just need to
+          # know whether E2E specs exist, not the whole plugin source. If the
+          # directory is absent, the checkout still succeeds (it is simply empty)
+          # and the detection below reports `false`.
+          sparse-checkout: "tests/e2e"
+      - name: "Detect E2E specs"
+        id: "detect"
+        shell: "bash"
+        env:
+          GLPI_VERSION: "${{ inputs.glpi-version }}"
+        run: |
+          # Mirror the glob used by GLPI core's playwright.config.ts
+          # (`plugins/*/tests/e2e/**/*.spec.ts`): the `plugin:<key>` project only
+          # exists when the plugin ships E2E spec files under `tests/e2e/`.
+          if [[ -z "$(find tests/e2e -name '*.spec.ts' 2>/dev/null | head -n 1)" ]]; then
+            echo "has-e2e-tests=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ No E2E specs found, Playwright tests will be skipped."
+            exit 0
+          fi
+          GLPI_BRANCH="${GLPI_VERSION%.x}/bugfixes"
+          HTTP_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/glpi-project/glpi/${GLPI_BRANCH}/playwright.config.ts" || true)"
+          if [[ "$HTTP_CODE" == "404" ]]; then
+            echo "has-e2e-tests=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ GLPI branch \"${GLPI_BRANCH}\" ships no Playwright infrastructure, E2E tests will be skipped."
+            exit 0
+          elif [[ "$HTTP_CODE" != "200" ]]; then
+            echo "::error::Could not determine whether GLPI branch \"${GLPI_BRANCH}\" provides Playwright (HTTP ${HTTP_CODE})."
+            exit 1
+          fi
+          echo "has-e2e-tests=true" >> "$GITHUB_OUTPUT"
+          echo "✅ E2E specs found, Playwright tests will run."
+
+  playwright:
+    needs: "detect-e2e-tests"
+    if: ${{ needs.detect-e2e-tests.outputs.has-e2e-tests == 'true' }}
+    permissions:
+      contents: "read"
+    name: "Playwright tests"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 60
+    # Same initialization as the GLPI core CI (docker-compose based), without sharding.
+    # GLPI core is checked out at the workspace root so that all of its
+    # `.github/actions/*` scripts and `docker-compose-*.yml` files are reused as-is.
+    # The plugin is checked out into `plugins/${{ inputs.plugin-key }}`.
+    #
+    # We cannot use the same approach as the ci job because we are required to run
+    # the Playwright tests in the mcr.microsoft.com/playwright container in order
+    # to ensure that the results are consistent with the local environment set up by the Makefile.
+    env:
+      COMPOSE_FILE: ".github/actions/docker-compose-app.yml:.github/actions/docker-compose-services.yml"
+      APPLICATION_ROOT: "${{ github.workspace }}"
+      DB_IMAGE: "githubactions-${{ inputs.db-image }}"
+      PHP_IMAGE: "githubactions-php-apache:${{ inputs.php-version }}"
+      UPDATE_FILES_ACL: true
+    steps:
+      - name: "Set env"
+        env:
+          GLPI_VERSION: "${{ inputs.glpi-version }}"
+        run: |
+          echo "APP_CONTAINER_HOME=${{ runner.temp }}/app_home" >> $GITHUB_ENV
+          # `glpi-version` is "X.Y.x"; the matching core branch is "X.Y/bugfixes".
+          echo "GLPI_BRANCH=${GLPI_VERSION%.x}/bugfixes" >> "$GITHUB_ENV"
+      - name: "Checkout GLPI core"
+        uses: "actions/checkout@v6"
+        with:
+          repository: "glpi-project/glpi"
+          ref: "${{ env.GLPI_BRANCH }}"
+          # Checkout into the workspace root.
+          path: "."
+      - name: "Checkout plugin"
+        uses: "actions/checkout@v6"
+        with:
+          path: "plugins/${{ inputs.plugin-key }}"
+      - name: "Restore dependencies cache"
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ env.APP_CONTAINER_HOME }}/.composer/cache/
+            ${{ env.APP_CONTAINER_HOME }}/.npm/_cacache/
+          key: "app_home_deps-${{ inputs.php-version }}-${{ hashFiles('composer.lock', 'package-lock.json', format('plugins/{0}/composer.lock', inputs.plugin-key), format('plugins/{0}/package-lock.json', inputs.plugin-key)) }}"
+          restore-keys: |
+            app_home_deps-${{ inputs.php-version }}-
+            app_home_deps-
+      - name: "Initialize containers"
+        run: |
+          .github/actions/init_containers-start.sh
+      - name: "Show versions"
+        run: |
+          .github/actions/init_show-versions.sh
+      - name: "Build GLPI's dependencies and translations"
+        run: |
+          docker compose exec -T app .github/actions/init_build.sh
+      - name: "Install plugin composer dependencies"
+        if: ${{ !cancelled() && hashFiles(format('plugins/{0}/composer.json', inputs.plugin-key)) != '' }}
+        run: |
+          docker compose exec -T app git config --global --add safe.directory /var/www/glpi/plugins/${{ inputs.plugin-key }}
+          docker compose exec -T -w /var/www/glpi/plugins/${{ inputs.plugin-key }} app composer install --ansi --no-interaction --no-progress --prefer-dist
+      - name: "Install plugin npm dependencies"
+        if: ${{ !cancelled() && hashFiles(format('plugins/{0}/package.json', inputs.plugin-key)) != '' }}
+        run: |
+          docker compose exec -T -w /var/www/glpi/plugins/${{ inputs.plugin-key }} app npm install --no-save
+      - name: "Build plugin assets"
+        # Building is plugin-specific: only run it when the plugin defines a `build`
+        # script in its package.json. Plugins without compiled assets just omit it.
+        if: ${{ !cancelled() && hashFiles(format('plugins/{0}/package.json', inputs.plugin-key)) != '' }}
+        run: |
+          if docker compose exec -T -w /var/www/glpi/plugins/${{ inputs.plugin-key }} app jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            docker compose exec -T -w /var/www/glpi/plugins/${{ inputs.plugin-key }} app npm run build
+          else
+            echo "ℹ️ No \"build\" script in package.json — skipping asset build."
+          fi
+      - name: "Install DB tests"
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose exec -T app .github/actions/e2e_install.sh
+      - name: "Install and activate the plugin"
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose exec -T app bin/console plugin:install --ansi --no-interaction --username=glpi --env=e2e_testing ${{ inputs.plugin-key }}
+          docker compose exec -T app bin/console plugin:activate --ansi --no-interaction --env=e2e_testing ${{ inputs.plugin-key }}
+      - name: "Type-check E2E tests"
+        if: ${{ !cancelled() && hashFiles(format('plugins/{0}/tsconfig.json', inputs.plugin-key)) != '' }}
+        run: |
+          docker compose exec -T app npx tsc -p plugins/${{ inputs.plugin-key }}/tsconfig.json --noEmit
+      - name: "Run Playwright tests"
+        if: ${{ !cancelled() }}
+        # Run the E2E tests exactly like local dev (see core `Makefile` target `playwright`):
+        # in the official `mcr.microsoft.com/playwright` container (browsers bundled),
+        # using the Playwright version pinned in GLPI core's lockfile.
+        run: |
+          docker compose exec -T app bin/console config:set url_base http://localhost:8090 --env=e2e_testing
+          PLAYWRIGHT_VERSION="$(docker compose exec -T app node -p "require('@playwright/test/package.json').version" | tr -d '\r')"
+          # `--network container:glpi-test-app` shares the app container's network stack, so
+          # `localhost:8090` reaches GLPI's e2e server without publishing any port (the CI
+          # compose, unlike the local dev one, does not expose 8090 on the host).
+          docker run --rm --ipc=host \
+            -v "${{ github.workspace }}:/app" \
+            -w /app \
+            -e CI=true \
+            -e E2E_BASE_URL=http://localhost:8090 \
+            --network "container:glpi-test-app" \
+            "mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble" \
+            npx playwright test --project="plugin:${{ inputs.plugin-key }}" --reporter=html,playwright-ctrf-json-reporter,dot
+      - name: "Check for PHP errors"
+        if: ${{ !cancelled() }}
+        run: |
+          grep -v '\*\*\* Test logger' tests/e2e/glpi_files/_log/php-errors.log > /tmp/php-errors-filtered.log || true
+          if [[ $(wc -l < /tmp/php-errors-filtered.log) -ge 1 ]]; then
+            echo "PHP errors detected in log file"
+            echo "==============================="
+            cat /tmp/php-errors-filtered.log
+            exit 1
+          fi
+      - name: "Upload Playwright report"
+        if: ${{ !cancelled() }}
+        uses: "actions/upload-artifact@v7"
+        with:
+          name: "playwright-report-${{ inputs.plugin-key }}-glpi${{ inputs.glpi-version }}-php${{ inputs.php-version }}"
+          path: "playwright-report/"
+          retention-days: 30
+          if-no-files-found: ignore
+      - name: "Detect CTRF report"
+        id: collect-reports
+        if: ${{ !cancelled() }}
+        run: |
+          if [[ -f ctrf/ctrf-report.json ]]; then
+            echo "ctrf-exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ctrf-exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Publish test summary results"
+        if: ${{ !cancelled() && steps.collect-reports.outputs.ctrf-exists == 'true' }}
+        uses: "ctrf-io/github-test-reporter@v1"
+        with:
+          report-path: "ctrf/ctrf-report.json"
+          collapse-large-reports: true
