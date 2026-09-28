@@ -29,6 +29,11 @@ on:
         required: false
         type: boolean
         default: false
+      run-e2e-tests:
+        description: "Set to false to skip the E2E (Playwright) tests, e.g. to run them on a single matrix entry."
+        required: false
+        type: boolean
+        default: true
     secrets:
       extra-env:
         description: "Optional newline-separated KEY=VALUE pairs, exposed as environment variables during the PHPUnit step."
@@ -523,6 +528,7 @@ jobs:
 
   detect-e2e-tests:
     name: "Detect E2E tests"
+    if: ${{ inputs.run-e2e-tests }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: "read"

@@ -69,6 +69,7 @@ jobs:
           EOF
           MODE="${{ inputs.complete-matrix && 'complete' || 'minimal' }}"
           MATRIX=$(jq -c --arg v "${{ inputs.glpi-version }}" --arg m "$MODE" '
-            {include: (.[$v][$m] // error("unknown glpi-version: " + $v)) | map(. + {"glpi-version": $v})}
+            (.[$v][$m] // error("unknown glpi-version: " + $v)) as $entries
+            | {include: [$entries | to_entries[] | .value + {"glpi-version": $v, "run-e2e-tests": (.key == ($entries | length) - 1)}]}
           ' /tmp/glpi-matrices.json)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT

@@ -54,6 +54,9 @@ jobs:
       # Set to true to skip the CHANGELOG update check on pull requests.
       skip-changelog-check: true
 
+      # Set to false to skip the E2E (Playwright) tests (default: true).
+      run-e2e-tests: true
+
       # Whether to enable code coverage generation (default: false).
       code-coverage: true
     secrets:
@@ -186,6 +189,9 @@ jobs:
       glpi-version: "${{ matrix.glpi-version }}"
       php-version: "${{ matrix.php-version }}"
       db-image: "${{ matrix.db-image }}"
+
+      # Run the E2E tests only once, on the matrix entry flagged by the matrix generator.
+      run-e2e-tests: ${{ matrix.run-e2e-tests }}
 
   coverage-report:
     if: github.event_name == 'pull_request'
