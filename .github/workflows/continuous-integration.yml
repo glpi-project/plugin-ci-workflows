@@ -536,7 +536,7 @@ jobs:
       has-e2e-tests: "${{ steps.detect.outputs.has-e2e-tests }}"
     steps:
       - name: "Checkout plugin"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           # Only fetch the `tests/e2e` tree (shallow, cone mode): we just need to
           # know whether E2E specs exist, not the whole plugin source. If the
@@ -601,14 +601,14 @@ jobs:
           # `glpi-version` is "X.Y.x"; the matching core branch is "X.Y/bugfixes".
           echo "GLPI_BRANCH=${GLPI_VERSION%.x}/bugfixes" >> "$GITHUB_ENV"
       - name: "Checkout GLPI core"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           repository: "glpi-project/glpi"
           ref: "${{ env.GLPI_BRANCH }}"
           # Checkout into the workspace root.
           path: "."
       - name: "Checkout plugin"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           path: "plugins/${{ inputs.plugin-key }}"
       - name: "Restore dependencies cache"
