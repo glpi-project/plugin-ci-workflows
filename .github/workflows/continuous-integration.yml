@@ -115,6 +115,8 @@ jobs:
         # Use default `bash` shell with `github-actions-runner` user
         shell: "bash"
         run: |
+          # The parent (`~/.cache`) must belong to `www-data`
+          sudo install --directory --owner=www-data --group=www-data "$(dirname "${{ env.CACHE_DIR }}")"
           sudo mkdir --parents "${{ env.CACHE_DIR }}/npm"
           sudo mkdir --parents "${{ env.CACHE_DIR }}/composer"
           sudo chown --recursive github-actions-runner "${{ env.CACHE_DIR }}"
