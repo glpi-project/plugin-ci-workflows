@@ -75,7 +75,7 @@ jobs:
       CACHE_DIR: "/home/www-data/.cache/continuous-integration-workflow"
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           path: "${{ inputs.plugin-key }}"
       - name: "Detect coverage configuration"
@@ -124,7 +124,7 @@ jobs:
           composer config cache-dir "${{ env.CACHE_DIR }}/composer"
       - name: "Restore cache"
         if: ${{ !cancelled() }}
-        uses: "actions/cache@v6"
+        uses: "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9" # v6.1.0
         with:
           path: |
             ${{ env.CACHE_DIR }}
@@ -441,7 +441,7 @@ jobs:
           echo "Sanitizing paths in clover.xml..."
           sed -i 's|/var/www/glpi/plugins/${{ inputs.plugin-key }}/|plugins/${{ inputs.plugin-key }}/|g' clover.xml
       - name: "Upload coverage report"
-        uses: "actions/upload-artifact@v7"
+        uses: "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" # v7.0.2
         if: ${{ !cancelled() && steps.coverage-config.outputs.coverage-enabled == 'true' }}
         with:
           name: "coverage-report"
@@ -551,7 +551,7 @@ jobs:
       has-e2e-tests: "${{ steps.detect.outputs.has-e2e-tests }}"
     steps:
       - name: "Checkout plugin"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           # Only fetch the `tests/e2e` tree (shallow, cone mode): we just need to
           # know whether E2E specs exist, not the whole plugin source. If the
@@ -616,18 +616,18 @@ jobs:
           # `glpi-version` is "X.Y.x"; the matching core branch is "X.Y/bugfixes".
           echo "GLPI_BRANCH=${GLPI_VERSION%.x}/bugfixes" >> "$GITHUB_ENV"
       - name: "Checkout GLPI core"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           repository: "glpi-project/glpi"
           ref: "${{ env.GLPI_BRANCH }}"
           # Checkout into the workspace root.
           path: "."
       - name: "Checkout plugin"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           path: "plugins/${{ inputs.plugin-key }}"
       - name: "Restore dependencies cache"
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ env.APP_CONTAINER_HOME }}/.composer/cache/
@@ -708,7 +708,7 @@ jobs:
           fi
       - name: "Upload Playwright report"
         if: ${{ !cancelled() }}
-        uses: "actions/upload-artifact@v7"
+        uses: "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" # v7.0.2
         with:
           name: "playwright-report-${{ inputs.plugin-key }}-glpi${{ inputs.glpi-version }}-php${{ inputs.php-version }}"
           path: "playwright-report/"
@@ -725,7 +725,7 @@ jobs:
           fi
       - name: "Publish test summary results"
         if: ${{ !cancelled() && steps.collect-reports.outputs.ctrf-exists == 'true' }}
-        uses: "ctrf-io/github-test-reporter@v1"
+        uses: "ctrf-io/github-test-reporter@7974087018bf4857cf5a9d78723e152038c3fa31" # v1.3.0
         with:
           report-path: "ctrf/ctrf-report.json"
           collapse-large-reports: true
