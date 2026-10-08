@@ -30,7 +30,7 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             echo "is-pr=true" >> "$GITHUB_OUTPUT"
             if [[ "${BASE_REF}" != "${DEFAULT_BRANCH}" ]]; then
               echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${BASE_REF})."
@@ -50,8 +50,10 @@ jobs:
 
       - name: "Read coverage configuration"
         id: "coverage-config"
+        env:
+          SKIP: ${{ steps.check-branch.outputs.skip }}
         run: |
-          if [[ "${{ steps.check-branch.outputs.skip }}" == "true" ]]; then
+          if [[ "${SKIP}" == "true" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -98,7 +100,7 @@ jobs:
         if: steps.check-branch.outputs.is-pr == 'true' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
         run: |
           REPORT_FILE="code-coverage-results.md"
-          ARTIFACT_LINK="📥 [Download coverage-report artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) _(contains \`clover.xml\` for IDE import + config file)_"
+          ARTIFACT_LINK="📥 [Download coverage-report artifact](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) _(contains \`clover.xml\` for IDE import + config file)_"
 
           # Split: keep header/badge visible, collapse the table inside <details>
           FIRST_TABLE_LINE=$(grep -n "^|" "$REPORT_FILE" | head -1 | cut -d: -f1)

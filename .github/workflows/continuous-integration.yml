@@ -88,7 +88,7 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && "${BASE_REF}" != "${DEFAULT_BRANCH}" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${BASE_REF}" != "${DEFAULT_BRANCH}" ]]; then
             echo "coverage-enabled=false" >> "$GITHUB_OUTPUT"
             echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${BASE_REF})."
             exit 0
@@ -122,12 +122,12 @@ jobs:
         shell: "bash"
         run: |
           # The parent (`~/.cache`) must belong to `www-data`
-          sudo install --directory --owner=www-data --group=www-data "$(dirname "${{ env.CACHE_DIR }}")"
-          sudo mkdir --parents "${{ env.CACHE_DIR }}/npm"
-          sudo mkdir --parents "${{ env.CACHE_DIR }}/composer"
-          sudo chown --recursive github-actions-runner "${{ env.CACHE_DIR }}"
-          npm config set cache "${{ env.CACHE_DIR }}/npm"
-          composer config cache-dir "${{ env.CACHE_DIR }}/composer"
+          sudo install --directory --owner=www-data --group=www-data "$(dirname "${CACHE_DIR}")"
+          sudo mkdir --parents "${CACHE_DIR}/npm"
+          sudo mkdir --parents "${CACHE_DIR}/composer"
+          sudo chown --recursive github-actions-runner "${CACHE_DIR}"
+          npm config set cache "${CACHE_DIR}/npm"
+          composer config cache-dir "${CACHE_DIR}/composer"
       - name: "Restore cache"
         if: ${{ !cancelled() }}
         uses: "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9" # v6.1.0
@@ -144,7 +144,7 @@ jobs:
         # Use default `bash` shell with `github-actions-runner` user
         shell: "bash"
         run: |
-          sudo setfacl --recursive --modify u:www-data:rwx "${{ env.CACHE_DIR }}"
+          sudo setfacl --recursive --modify u:www-data:rwx "${CACHE_DIR}"
           sudo setfacl --recursive --modify u:www-data:rwx /var/www/glpi/plugins
       - name: "Install composer dependencies"
         if: ${{ !cancelled() && hashFiles(format('{0}/composer.json', inputs.plugin-key)) != '' }}
@@ -218,9 +218,10 @@ jobs:
         shell: "bash"
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           pr_files=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
             | jq -r '{
                 has_changelog: ([.[].filename] | any(test("CHANGELOG"; "i"))),
                 exempt:        ([.[].filename] | all(test("^locales/|^\\.github/"; "i")))
@@ -241,9 +242,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PLUGIN_KEY: ${{ inputs.plugin-key }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           pr_files=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
             | jq -r '[.[].filename]')
           if echo "$pr_files" | jq -e --arg k "$PLUGIN_KEY" '. | any(. == "plugin.xml" or . == ($k + ".xml"))' > /dev/null; then
             echo "xml_modified=true" >> "$GITHUB_OUTPUT"
@@ -257,10 +259,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PLUGIN_KEY: ${{ inputs.plugin-key }}
           BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # URLs added in this PR inside <download_url> tags point to archives not yet published
           new_download_urls=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
             | jq -r --arg k "$PLUGIN_KEY" '[.[] | select(.filename == "plugin.xml" or .filename == ($k + ".xml")) | .patch // ""] | join("\n")' \
             | grep '^+' | grep '<download_url>' | grep -oP 'https?://[^\s<>"]+' | sort -u || true)
           echo -e "\033[0;33mChecking URLs in XML manifest files...\033[0m"
@@ -269,7 +272,7 @@ jobs:
 
           # Files added (or renamed to a new path) by the whole PR, not only its last commit
           added_files=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files?per_page=100" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" \
             | jq -r '.[] | select(.status == "added" or .status == "renamed") | .filename')
 
           # Works for refs containing a slash (e.g. 11.0/bugfixes)
@@ -281,7 +284,7 @@ jobs:
             fi
 
             local relative_path="${url#*"$ref_prefix"}"
-            if grep -qxF "$relative_path" <<< "$added_files"; then
+            if grep -qxF -- "$relative_path" <<< "$added_files"; then
               return 0
             fi
 
@@ -443,6 +446,7 @@ jobs:
         if: ${{ !cancelled() && hashFiles(format('{0}/phpunit.xml', inputs.plugin-key)) != '' }}
         env:
           EXTRA_ENV: ${{ secrets.extra-env }}
+          PLUGIN_CI_COVERAGE_ENABLED: ${{ steps.coverage-config.outputs.coverage-enabled }}
         run: |
           echo -e "\033[0;33mExecuting PHPUnit...\033[0m"
           PHPUNIT_FLAGS="--colors=always"
@@ -454,7 +458,7 @@ jobs:
             set +a
           fi
 
-          if [[ "${{ steps.coverage-config.outputs.coverage-enabled }}" == "true" ]]; then
+          if [[ "${PLUGIN_CI_COVERAGE_ENABLED}" == "true" ]]; then
             PHPUNIT_FLAGS="$PHPUNIT_FLAGS --coverage-text --coverage-cobertura=cobertura.xml --coverage-clover=clover.xml"
             # pcov is installed in the image but disabled by default (pcov.enabled=0).
             # Enabling it and scoping it to only the plugin. No need to run coverage on the rest of GLPI code.
@@ -655,7 +659,7 @@ jobs:
         env:
           GLPI_VERSION: "${{ inputs.glpi-version }}"
         run: |
-          echo "APP_CONTAINER_HOME=${{ runner.temp }}/app_home" >> "$GITHUB_ENV"
+          echo "APP_CONTAINER_HOME=${RUNNER_TEMP}/app_home" >> "$GITHUB_ENV"
           # `glpi-version` is "X.Y.x"; the matching core branch is "X.Y/bugfixes".
           echo "GLPI_BRANCH=${GLPI_VERSION%.x}/bugfixes" >> "$GITHUB_ENV"
       - name: "Checkout GLPI core"
@@ -746,7 +750,7 @@ jobs:
           # `localhost:8090` reaches GLPI's e2e server without publishing any port (the CI
           # compose, unlike the local dev one, does not expose 8090 on the host).
           docker run --rm --ipc=host \
-            -v "${{ github.workspace }}:/app" \
+            -v "${GITHUB_WORKSPACE}:/app" \
             -w /app \
             -e CI=true \
             -e E2E_BASE_URL=http://localhost:8090 \
