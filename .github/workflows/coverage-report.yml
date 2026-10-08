@@ -26,18 +26,21 @@ jobs:
     steps:
       - name: "Check target branch"
         id: "check-branch"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "is-pr=true" >> $GITHUB_OUTPUT
-            if [[ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]]; then
-              echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${{ github.base_ref }})."
-              echo "skip=true" >> $GITHUB_OUTPUT
+            echo "is-pr=true" >> "$GITHUB_OUTPUT"
+            if [[ "${BASE_REF}" != "${DEFAULT_BRANCH}" ]]; then
+              echo "ℹ️ Code coverage is disabled for pull requests targeting non-default branch (${BASE_REF})."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           else
-            echo "is-pr=false" >> $GITHUB_OUTPUT
+            echo "is-pr=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: "Download coverage report"
         if: steps.check-branch.outputs.skip != 'true'
@@ -49,32 +52,32 @@ jobs:
         id: "coverage-config"
         run: |
           if [[ "${{ steps.check-branch.outputs.skip }}" == "true" ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           CONFIG_FILE=".glpi-coverage.json"
           if [[ ! -f "$CONFIG_FILE" ]]; then
             echo "⚠️ No $CONFIG_FILE found, skipping coverage report."
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
           if [[ "$ENABLED" != "true" ]]; then
             echo "ℹ️ Code coverage is disabled via $CONFIG_FILE"
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "skip=false" >> $GITHUB_OUTPUT
-          echo "only-list-changed-files=$(jq -r '.only_list_changed_files // true' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "badge=$(jq -r '.badge // true' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "overall-coverage-fail-threshold=$(jq -r '.overall_coverage_fail_threshold // 0' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "file-coverage-error-min=$(jq -r '.file_coverage_error_min // 50' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "file-coverage-warning-max=$(jq -r '.file_coverage_warning_max // 75' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "fail-on-negative-difference=$(jq -r '.fail_on_negative_difference // false' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
-          echo "retention-days=$(jq -r '.retention_days // 90' "$CONFIG_FILE")" >> $GITHUB_OUTPUT
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "only-list-changed-files=$(jq -r '.only_list_changed_files // true' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "badge=$(jq -r '.badge // true' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "overall-coverage-fail-threshold=$(jq -r '.overall_coverage_fail_threshold // 0' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "file-coverage-error-min=$(jq -r '.file_coverage_error_min // 50' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "file-coverage-warning-max=$(jq -r '.file_coverage_warning_max // 75' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "fail-on-negative-difference=$(jq -r '.fail_on_negative_difference // false' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "retention-days=$(jq -r '.retention_days // 90' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
 
       - name: "Generate coverage report"
         if: steps.coverage-config.outputs.skip != 'true'
@@ -94,7 +97,6 @@ jobs:
       - name: "Generating Markdown report"
         if: steps.check-branch.outputs.is-pr == 'true' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
         run: |
-          COVERAGE="${{ steps.coverage-report.outputs.coverage }}"
           REPORT_FILE="code-coverage-results.md"
           ARTIFACT_LINK="📥 [Download coverage-report artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) _(contains \`clover.xml\` for IDE import + config file)_"
 
