@@ -12,7 +12,6 @@ on:
         type: string
         default: "Continuous integration"
       # GitHub App client ID. Used when `bot-token` is not given.
-      # Defaults to the `GLPI_PROJECT_BOT_CLIENT_ID` variable.
       bot-client-id:
         required: false
         type: string
@@ -23,9 +22,6 @@ on:
         required: false
       # Private key of the `bot-client-id` GitHub App.
       bot-private-key:
-        required: false
-      # Org-wide fallback of `bot-private-key`
-      GLPI_PROJECT_BOT_PRIVATE_KEY:
         required: false
 
 permissions:
@@ -148,17 +144,17 @@ jobs:
         if: steps.check-branch.outputs.is-pr == 'true' && steps.coverage-config.outputs.skip != 'true' && steps.coverage-report.outputs.file != ''
         env:
           HAS_BOT_TOKEN: ${{ secrets.bot-token != '' }}
-          INPUT_BOT_CLIENT_ID: ${{ inputs.bot-client-id }}
-          BOT_CLIENT_ID: ${{ inputs.bot-client-id || vars.GLPI_PROJECT_BOT_CLIENT_ID }}
-          HAS_BOT_PRIVATE_KEY: ${{ secrets.bot-private-key != '' || secrets.GLPI_PROJECT_BOT_PRIVATE_KEY != '' }}
+          BOT_CLIENT_ID: ${{ inputs.bot-client-id }}
+          HAS_BOT_PRIVATE_KEY: ${{ secrets.bot-private-key != '' }}
         run: |
           USE_BOT_APP=no
+          if [[ -n "${BOT_CLIENT_ID}" && "${HAS_BOT_PRIVATE_KEY}" != "true" ]]; then
+            echo "::error::The bot-private-key secret is required when bot-client-id is set."
+            exit 1
+          fi
           if [[ "${HAS_BOT_TOKEN}" != "true" ]]; then
-            if [[ -n "${BOT_CLIENT_ID}" && "${HAS_BOT_PRIVATE_KEY}" == "true" ]]; then
+            if [[ -n "${BOT_CLIENT_ID}" ]]; then
               USE_BOT_APP=yes
-            elif [[ -n "${INPUT_BOT_CLIENT_ID}" ]]; then
-              echo "::error::The bot-private-key secret is required when bot-client-id is set."
-              exit 1
             fi
           fi
           echo "USE_BOT_APP=${USE_BOT_APP}" >> "$GITHUB_ENV"
@@ -168,8 +164,8 @@ jobs:
         id: "bot-app-token"
         uses: "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" # v3.3.0
         with:
-          client-id: ${{ inputs.bot-client-id || vars.GLPI_PROJECT_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.bot-private-key || secrets.GLPI_PROJECT_BOT_PRIVATE_KEY }}
+          client-id: ${{ inputs.bot-client-id }}
+          private-key: ${{ secrets.bot-private-key }}
           permission-pull-requests: "write"
 
       - name: "Add coverage PR comment"
