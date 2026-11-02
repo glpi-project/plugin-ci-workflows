@@ -11,8 +11,8 @@ on:
         required: false
         type: string
         default: "Continuous integration"
-      # GitHub App client ID. Used when `bot-token` is not given.
       bot-client-id:
+        description: "GitHub App client ID. Used when `bot-token` is not given."
         required: false
         type: string
         default: ""
