@@ -17,11 +17,11 @@ on:
         type: string
         default: ""
     secrets:
-      # A ready-made token (PAT or GitHub App token), used as is.
       bot-token:
+        description: "A ready-made token (PAT or GitHub App token), used as is."
         required: false
-      # Private key of the `bot-client-id` GitHub App.
       bot-private-key:
+        description: "Private key of the `bot-client-id` GitHub App."
         required: false
 
 permissions:
