@@ -150,7 +150,16 @@ The `coverage-report.yml` reusable workflow generates a PR comment with a covera
     uses: "glpi-project/plugin-ci-workflows/.github/workflows/coverage-report.yml@v1"
     with:
       plugin-key: "myplugin"
+    secrets:
+      GLPI_PROJECT_BOT_PRIVATE_KEY: "${{ secrets.GLPI_PROJECT_BOT_PRIVATE_KEY }}"
 ```
+
+The comment is posted with, in this order of precedence:
+
+1. `bot-token` secret: a token (PAT or GitHub App token) with the `Pull requests` read/write permission, used as is.
+2. `bot-client-id` input and `bot-private-key` secret. Used by a GitHub App with the `pull-requests: write` permission.  
+    They default to the `GLPI_PROJECT_BOT_CLIENT_ID` variable and the `GLPI_PROJECT_BOT_PRIVATE_KEY` secret, which must be passed by name.
+3. The workflow `GITHUB_TOKEN`, e.g. on pull requests from forks, which do not receive secrets.
 
 > **Note:** For base branch comparison to work, the CI workflow must run on every push to the default branch so that an up-to-date coverage artifact is always available.
 > 
@@ -211,4 +220,6 @@ jobs:
     uses: "glpi-project/plugin-ci-workflows/.github/workflows/coverage-report.yml@v1"
     with:
       plugin-key: "myplugin"
+    secrets:
+      GLPI_PROJECT_BOT_PRIVATE_KEY: "${{ secrets.GLPI_PROJECT_BOT_PRIVATE_KEY }}"
 ```
