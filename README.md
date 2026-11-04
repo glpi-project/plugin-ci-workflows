@@ -159,7 +159,7 @@ The comment is posted with, in this order of precedence:
 
 1. `bot-token` secret: a token (PAT or GitHub App token) with the `Pull requests` read/write permission, used as is.
 2. `bot-client-id` input and `bot-private-key` secret. Used by a GitHub App with the `pull-requests: write` permission.
-3. The workflow `GITHUB_TOKEN`, e.g. on pull requests from forks, which do not receive secrets.
+3. The workflow `GITHUB_TOKEN`, e.g. on pull requests from forks or from Dependabot, which do not receive the Actions secrets.
 
 > **Note:** For base branch comparison to work, the CI workflow must run on every push to the default branch so that an up-to-date coverage artifact is always available.
 > 

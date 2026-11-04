@@ -148,13 +148,12 @@ jobs:
           HAS_BOT_PRIVATE_KEY: ${{ secrets.bot-private-key != '' }}
         run: |
           USE_BOT_APP=no
-          if [[ -n "${BOT_CLIENT_ID}" && "${HAS_BOT_PRIVATE_KEY}" != "true" ]]; then
-            echo "::error::The bot-private-key secret is required when bot-client-id is set."
-            exit 1
-          fi
-          if [[ "${HAS_BOT_TOKEN}" != "true" ]]; then
-            if [[ -n "${BOT_CLIENT_ID}" ]]; then
+          if [[ "${HAS_BOT_TOKEN}" != "true" && -n "${BOT_CLIENT_ID}" ]]; then
+            # Secrets are not passed to pull requests from forks nor to Dependabot ones
+            if [[ "${HAS_BOT_PRIVATE_KEY}" == "true" ]]; then
               USE_BOT_APP=yes
+            else
+              echo "::warning::The bot-private-key secret is not available, the workflow GITHUB_TOKEN is used instead."
             fi
           fi
           echo "USE_BOT_APP=${USE_BOT_APP}" >> "$GITHUB_ENV"
