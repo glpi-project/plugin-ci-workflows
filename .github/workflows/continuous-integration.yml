@@ -214,7 +214,7 @@ jobs:
             -f ../../tests/LDAP/ldif/10-users.ldif \
             -H ldap://openldap:389
       - name: "Check CHANGELOG update"
-        if: ${{ !cancelled() && !inputs.skip-changelog-check && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && (hashFiles(format('{0}/CHANGELOG.md', inputs.plugin-key)) != '' || hashFiles(format('{0}/CHANGELOG', inputs.plugin-key)) != '') }}
+        if: ${{ !cancelled() && !inputs.skip-changelog-check && github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]') && (hashFiles(format('{0}/CHANGELOG.md', inputs.plugin-key)) != '' || hashFiles(format('{0}/CHANGELOG', inputs.plugin-key)) != '') }}
         shell: "bash"
         env:
           GH_TOKEN: ${{ github.token }}
