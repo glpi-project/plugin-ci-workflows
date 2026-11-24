@@ -60,7 +60,7 @@ jobs:
       openldap:
         # Workaround to only add the service if a given variable is set.
         # See: https://github.com/actions/runner/issues/822
-        image: "${{ contains(inputs.extra-services, 'openldap') && 'osixia/openldap:latest' || '' }}"
+        image: "${{ contains(inputs.extra-services, 'openldap') && 'osixia/openldap:1.5.0@sha256:18742e9c449c9c1afe129d3f2f3ee15fb34cc43e5f940a20f3399728f41d7c28' || '' }}"
         env:
           LDAP_ORGANISATION: "GLPI"
           LDAP_DOMAIN: "glpi.org"
