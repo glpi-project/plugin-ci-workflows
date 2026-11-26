@@ -68,6 +68,18 @@ jobs:
                 {"php-version": "8.5", "db-image": "mysql:8.0"},
                 {"php-version": "8.5", "db-image": "mysql:9.7"}
               ]
+            },
+            "13.0.x": {
+              "minimal": [
+                {"php-version": "8.3", "db-image": "mysql:8.0"},
+                {"php-version": "8.5", "db-image": "mariadb:10.11"}
+              ],
+              "complete": [
+                {"php-version": "8.3", "db-image": "mariadb:10.11"},
+                {"php-version": "8.4", "db-image": "mariadb:12.3"},
+                {"php-version": "8.5", "db-image": "mysql:8.0"},
+                {"php-version": "8.5", "db-image": "mysql:9.7"}
+              ]
             }
           }
           EOF
