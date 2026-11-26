@@ -595,6 +595,7 @@ jobs:
       contents: "read"
     outputs:
       has-e2e-tests: "${{ steps.detect.outputs.has-e2e-tests }}"
+      glpi-branch: "${{ steps.detect.outputs.glpi-branch }}"
     steps:
       - name: "Checkout plugin"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -620,6 +621,17 @@ jobs:
             exit 0
           fi
           GLPI_BRANCH="${GLPI_VERSION%.x}/bugfixes"
+          # Unreleased major versions have no bugfixes branch yet and are developed on `main`.
+          LS_REMOTE_STATUS=0
+          git ls-remote --exit-code --heads "https://github.com/glpi-project/glpi.git" "refs/heads/${GLPI_BRANCH}" > /dev/null || LS_REMOTE_STATUS=$?
+          if [[ "$LS_REMOTE_STATUS" == "2" ]]; then
+            echo "ℹ️ GLPI branch \"${GLPI_BRANCH}\" does not exist, falling back to \"main\"."
+            GLPI_BRANCH="main"
+          elif [[ "$LS_REMOTE_STATUS" != "0" ]]; then
+            echo "::error::Could not determine whether GLPI branch \"${GLPI_BRANCH}\" exists."
+            exit 1
+          fi
+          echo "glpi-branch=${GLPI_BRANCH}" >> "$GITHUB_OUTPUT"
           HTTP_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "https://raw.githubusercontent.com/glpi-project/glpi/${GLPI_BRANCH}/playwright.config.ts" || true)"
           if [[ "$HTTP_CODE" == "404" ]]; then
             echo "has-e2e-tests=false" >> "$GITHUB_OUTPUT"
@@ -656,17 +668,13 @@ jobs:
       UPDATE_FILES_ACL: true
     steps:
       - name: "Set env"
-        env:
-          GLPI_VERSION: "${{ inputs.glpi-version }}"
         run: |
           echo "APP_CONTAINER_HOME=${RUNNER_TEMP}/app_home" >> "$GITHUB_ENV"
-          # `glpi-version` is "X.Y.x"; the matching core branch is "X.Y/bugfixes".
-          echo "GLPI_BRANCH=${GLPI_VERSION%.x}/bugfixes" >> "$GITHUB_ENV"
       - name: "Checkout GLPI core"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           repository: "glpi-project/glpi"
-          ref: "${{ env.GLPI_BRANCH }}"
+          ref: "${{ needs.detect-e2e-tests.outputs.glpi-branch }}"
           # Checkout into the workspace root.
           path: "."
           persist-credentials: false
